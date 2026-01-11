@@ -99,24 +99,65 @@ export function ScannerProvider({ children }) {
     try {
       const prices = await fetchPrices(symbols);
       
+      // Fetch PoiData from database for all symbols
+      const allPoiData = await base44.entities.PoiData.list();
+      
       const newAssetData = {};
       const newRaids = [];
       
       for (const symbol of symbols) {
         if (prices[symbol]) {
-          const pois = calculatePOIs(symbol, prices[symbol].price);
+          // Get PoiData for this symbol from database
+          const symbolPoiData = allPoiData.filter(poi => poi.symbol === symbol);
+          
+          // Build pois object from database or fallback to calculated
+          const pois = {};
+          if (symbolPoiData.length > 0) {
+            const poiTypes = ['PWH', 'PWL', 'PMH', 'PML', 'PQH', 'PQL'];
+            poiTypes.forEach(type => {
+              const poiRecord = symbolPoiData.find(p => {
+                // Check if this POI matches the type
+                if (type === 'PWH' || type === 'PWL') return p.timeframe === '1w';
+                if (type === 'PMH' || type === 'PML') return p.timeframe === '1M';
+                return false;
+              });
+              
+              if (poiRecord) {
+                pois[type] = {
+                  price: type.includes('H') ? poiRecord.high : poiRecord.low,
+                  isRaided: false,
+                  isActive: true
+                };
+              } else {
+                pois[type] = {
+                  price: 0,
+                  isRaided: false,
+                  isActive: false
+                };
+              }
+            });
+          } else {
+            // Fallback to calculated POIs if no database records
+            const calculated = calculatePOIs(symbol, prices[symbol].price);
+            Object.assign(pois, calculated);
+          }
           
           Object.entries(pois).forEach(([poiType, data]) => {
-            if (data.isActive) {
+            if (data.isActive && data.price > 0) {
               const isHighRaid = poiType.includes('H');
-              newRaids.push({
-                symbol,
-                poi_type: poiType,
-                raid_direction: isHighRaid ? 'bullish' : 'bearish',
-                poi_price: data.price,
-                raid_price: prices[symbol].price,
-                timestamp: new Date().toISOString()
-              });
+              const distancePercent = Math.abs((prices[symbol].price - data.price) / data.price) * 100;
+              
+              // Only flag as raid if price is within 2% of POI
+              if (distancePercent < 2) {
+                newRaids.push({
+                  symbol,
+                  poi_type: poiType,
+                  raid_direction: isHighRaid ? 'bullish' : 'bearish',
+                  poi_price: data.price,
+                  raid_price: prices[symbol].price,
+                  timestamp: new Date().toISOString()
+                });
+              }
             }
           });
           
