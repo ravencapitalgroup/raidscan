@@ -60,30 +60,12 @@ export default function ManageCoins() {
     },
   });
 
-  const selectAllAssets = useMutation({
+  const toggleAllAssets = useMutation({
     mutationFn: async () => {
-      const updates = assets
-        .filter(asset => !asset.is_active)
-        .map(asset => base44.entities.WatchlistAsset.update(asset.id, { is_active: true }));
-      await Promise.all(updates);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
-      setTimeout(async () => {
-        try {
-          await scanMarkets();
-        } catch (err) {
-          console.error('Error refreshing data after select all:', err);
-        }
-      }, 2000);
-    },
-  });
-
-  const deselectAllAssets = useMutation({
-    mutationFn: async () => {
-      const updates = assets
-        .filter(asset => asset.is_active)
-        .map(asset => base44.entities.WatchlistAsset.update(asset.id, { is_active: false }));
+      const shouldActivate = activeCount < assets.length / 2;
+      const updates = assets.map(asset =>
+        base44.entities.WatchlistAsset.update(asset.id, { is_active: shouldActivate })
+      );
       await Promise.all(updates);
     },
     onSuccess: () => {
