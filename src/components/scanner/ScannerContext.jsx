@@ -53,32 +53,54 @@ const normalizeSymbol = (symbol) => {
   return symbol;
 };
 
-// Fetch prices from Binance via backend function
-const fetchPrices = async (symbols) => {
+// Fetch prices from Binance via backend function with retry logic
+const fetchPrices = async (symbols, retries = 3) => {
   const normalizedSymbols = symbols.map(normalizeSymbol);
-  const result = await base44.functions.invoke('fetchBinancePrices', { symbols: normalizedSymbols });
   
-  console.log('Raw result from fetchBinancePrices:', result);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const result = await Promise.race([
+        base44.functions.invoke('fetchBinancePrices', { symbols: normalizedSymbols }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 10000))
+      ]);
+      
+      clearTimeout(timeoutId);
+      console.log('Raw result from fetchBinancePrices:', result);
 
-  // Check if result or result.prices is undefined/null to prevent 'reduce' error
-  if (!result || !Array.isArray(result.prices)) {
-    console.error('Invalid or empty response from fetchBinancePrices:', result);
-    return {}; // Return empty object to prevent further errors
-  }
+      // Check if result or result.prices is undefined/null to prevent 'reduce' error
+      if (!result || !Array.isArray(result.prices)) {
+        console.error('Invalid or empty response from fetchBinancePrices:', result);
+        return {}; // Return empty object to prevent further errors
+      }
 
-  return result.prices.reduce((acc, item) => {
-    if (item.error) {
-      console.error(`Error fetching ${item.symbol}:`, item.error);
-      return acc;
+      return result.prices.reduce((acc, item) => {
+        if (item.error) {
+          console.error(`Error fetching ${item.symbol}:`, item.error);
+          return acc;
+        }
+        acc[item.symbol] = {
+          price: item.lastPrice,
+          change24h: item.priceChangePercent,
+          volume: item.volume,
+          quoteAssetVolume: item.quoteAssetVolume
+        };
+        return acc;
+      }, {});
+    } catch (err) {
+      console.warn(`Fetch attempt ${attempt}/${retries} failed:`, err.message);
+      if (attempt === retries) {
+        console.error('All fetch attempts failed:', err);
+        return {}; // Return empty object on final failure
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
     }
-    acc[item.symbol] = {
-      price: item.lastPrice,
-      change24h: item.priceChangePercent,
-      volume: item.volume,
-      quoteAssetVolume: item.quoteAssetVolume
-    };
-    return acc;
-  }, {});
+  }
+  
+  return {};
 };
 
 export function ScannerProvider({ children }) {
