@@ -60,7 +60,8 @@ export default function ManageCoins() {
     },
   });
 
-  const categories = ['all', ...Object.keys(categoryColors)];
+  const categoryOrder = ['Layer 1', 'Layer 2', 'DeFi', 'AI', 'Gaming', 'Meme', 'Infrastructure', 'Other'];
+  const categories = ['all', ...categoryOrder];
   
   const sortedAndFilteredAssets = assets
     .filter(asset => {
@@ -76,6 +77,11 @@ export default function ManageCoins() {
     acc[cat].push(asset);
     return acc;
   }, {});
+
+  const categoryOrder = ['Layer 1', 'Layer 2', 'DeFi', 'AI', 'Gaming', 'Meme', 'Infrastructure', 'Other'];
+  const sortedGroupedAssets = Object.entries(groupedAssets).sort(([catA], [catB]) => {
+    return categoryOrder.indexOf(catA) - categoryOrder.indexOf(catB);
+  });
 
   const activeCount = assets.filter(a => a.is_active).length;
 
@@ -154,7 +160,7 @@ export default function ManageCoins() {
 
         {/* Grouped Coins List */}
         <div className="space-y-6">
-          {Object.entries(groupedAssets).map(([category, categoryAssets]) => (
+          {sortedGroupedAssets.map(([category, categoryAssets]) => (
             <div key={category}>
               <div className="flex items-center gap-3 mb-4">
                 <Badge className={cn("px-3 py-1", categoryColors[category])}>
