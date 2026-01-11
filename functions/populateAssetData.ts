@@ -46,8 +46,12 @@ Symbols: ${symbolNames.join(', ')}`,
           for (const asset of batch) {
             const cleanSymbol = asset.symbol.replace('USDT', '');
             const type = result.categories?.[cleanSymbol] || 'Other';
-            await base44.asServiceRole.entities.WatchlistAsset.update(asset.id, { type });
-            typesPopulated++;
+            try {
+              await base44.asServiceRole.entities.WatchlistAsset.update(asset.id, { type });
+              typesPopulated++;
+            } catch (updateErr) {
+              console.warn(`Failed to update ${asset.symbol}: ${updateErr.message}`);
+            }
           }
 
           console.log(`Populated types for ${Math.min(batchSize, assetsNeedingType.length - i)} assets`);
