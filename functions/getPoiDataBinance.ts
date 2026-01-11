@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
 
     const timeframes = ['1w', '1M'];
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    const fourHoursMs = 4 * 60 * 60 * 1000;
+    const now = new Date();
 
     const fetchKlines = async (sym, timeframe, endpoint) => {
       try {
