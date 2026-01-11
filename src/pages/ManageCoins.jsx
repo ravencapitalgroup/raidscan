@@ -62,11 +62,10 @@ export default function ManageCoins() {
 
   const selectAllAssets = useMutation({
     mutationFn: async () => {
-      for (const asset of assets) {
-        if (!asset.is_active) {
-          await base44.entities.WatchlistAsset.update(asset.id, { is_active: true });
-        }
-      }
+      const updates = assets
+        .filter(asset => !asset.is_active)
+        .map(asset => base44.entities.WatchlistAsset.update(asset.id, { is_active: true }));
+      await Promise.all(updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
@@ -82,11 +81,10 @@ export default function ManageCoins() {
 
   const deselectAllAssets = useMutation({
     mutationFn: async () => {
-      for (const asset of assets) {
-        if (asset.is_active) {
-          await base44.entities.WatchlistAsset.update(asset.id, { is_active: false });
-        }
-      }
+      const updates = assets
+        .filter(asset => asset.is_active)
+        .map(asset => base44.entities.WatchlistAsset.update(asset.id, { is_active: false }));
+      await Promise.all(updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
