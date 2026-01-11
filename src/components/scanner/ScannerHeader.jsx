@@ -1,5 +1,5 @@
 import React from 'react';
-import { Radar, Zap, RefreshCw } from 'lucide-react';
+import { BarChart3, Zap, RefreshCw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,7 @@ export default function ScannerHeader({
             "w-14 h-14 rounded-2xl flex items-center justify-center",
             "bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30"
           )}>
-            <Radar className={cn(
+            <BarChart3 className={cn(
               "w-7 h-7 text-emerald-400",
               isScanning && "animate-pulse"
             )} />
