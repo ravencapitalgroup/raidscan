@@ -97,10 +97,22 @@ export default function Scanner() {
   const queryClient = useQueryClient();
 
   // Fetch active symbols from database
-  const { data: watchlistAssets = [] } = useQuery({
+  const { data: rawWatchlistAssets = [] } = useQuery({
     queryKey: ['watchlistAssets'],
     queryFn: () => base44.entities.WatchlistAsset.filter({ is_active: true }),
   });
+
+  // Remove duplicates - keep only the most recently created one for each symbol
+  const watchlistAssets = rawWatchlistAssets.reduce((acc, asset) => {
+    const existing = acc.find(a => a.symbol === asset.symbol);
+    if (!existing) {
+      acc.push(asset);
+    } else if (new Date(asset.created_date) > new Date(existing.created_date)) {
+      const index = acc.indexOf(existing);
+      acc[index] = asset;
+    }
+    return acc;
+  }, []);
 
   const symbols = watchlistAssets.map(a => a.symbol);
 
@@ -181,7 +193,10 @@ export default function Scanner() {
 
   // Initial scan and periodic refresh
   useEffect(() => {
-    if (symbols.length === 0) return;
+    if (symbols.length === 0) {
+      setIsScanning(false);
+      return;
+    }
     
     scanMarkets();
     setNextRefresh(Date.now() + refreshInterval);
