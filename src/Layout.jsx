@@ -3,12 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Radar, Settings, Table } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { ScannerProvider } from '@/components/scanner/ScannerContext';
+import { ScannerProvider, useScannerData } from '@/components/scanner/ScannerContext';
+import TimezoneSelector from '@/components/scanner/TimezoneSelector';
 
-export default function Layout({ children, currentPageName }) {
+function LayoutContent({ children, currentPageName }) {
+  const { timezone, setTimezone } = useScannerData();
+  
   return (
-    <ScannerProvider>
-      <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-slate-950">
       <style>{`
         :root {
           --background: 222.2 84% 4.9%;
@@ -101,14 +103,28 @@ export default function Layout({ children, currentPageName }) {
               >
                 <Settings className="w-4 h-4" />
                 <span className="font-medium text-sm">Manage Coins</span>
-              </Link>
-              </div>
-              </div>
-              </div>
-              </nav>
+                </Link>
+                </div>
 
-              {children}
-              </div>
-              </ScannerProvider>
-              );
-              }
+                <div className="flex items-center">
+                <TimezoneSelector
+                value={timezone}
+                onChange={setTimezone}
+                />
+                </div>
+                </div>
+                </div>
+                </nav>
+
+        {children}
+      </div>
+    );
+}
+
+export default function Layout({ children, currentPageName }) {
+  return (
+    <ScannerProvider>
+      <LayoutContent children={children} currentPageName={currentPageName} />
+    </ScannerProvider>
+  );
+}
