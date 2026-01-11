@@ -20,9 +20,7 @@ Deno.serve(async (req) => {
 
     // Fetch klines for each timeframe
     for (const timeframe of timeframes) {
-      for (const tf of [timeframe]) {
-      for (const timeframe of timeframes) {
-        const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`;
+      const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`;
         console.log(`Fetching: ${url}`);
         
         const response = await fetch(url);
