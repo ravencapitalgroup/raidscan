@@ -55,7 +55,6 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
     <div className={cn(
       "relative flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300",
       getBackgroundColor(),
-      getTextColor(),
       getBorderColor(),
       getBorderWidth()
     )}>
@@ -71,8 +70,8 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
           )} />
         </span>
       )}
-      <span className="font-mono text-xs font-semibold">{config.label}</span>
-      <span className="font-mono text-xs opacity-70">
+      <span className={cn("font-mono text-xs font-semibold", getLabelColor())}>{config.label}</span>
+      <span className={cn("font-mono text-xs opacity-70", getLabelColor())}>
         ${price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
       </span>
     </div>
