@@ -83,6 +83,7 @@ export default function AssetCard({
             price={data.price}
             isRaided={data.isRaided}
             isActive={data.isActive}
+            currentPrice={price}
           />
         ))}
       </div>
