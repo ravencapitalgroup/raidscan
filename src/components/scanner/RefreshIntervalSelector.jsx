@@ -61,7 +61,7 @@ export default function RefreshIntervalSelector({ value, onChange, nextRefresh }
       <div className="relative bg-slate-900/50 border border-slate-700/50 rounded-xl p-3 backdrop-blur-sm overflow-hidden">
         {/* Progress bar */}
         <motion.div
-          className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500"
+          className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
           style={{ width: `${progress}%` }}
           transition={{ duration: 1 }}
         />
