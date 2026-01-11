@@ -44,27 +44,64 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Fetch exchange info from Binance with fallback and track source
-    const { data: exchangeData, endpoint } = await fetchWithFallback([
+    // Fetch from both Futures and Spot
+    const { data: futuresData, endpoint: futuresEndpoint } = await fetchWithFallback([
+      'https://fapi.binance.com/fapi/v1/exchangeInfo',
+      'https://api.binance.us/fapi/v1/exchangeInfo'
+    ]).catch(() => ({ data: { symbols: [] }, endpoint: '' }));
+
+    const { data: spotData, endpoint: spotEndpoint } = await fetchWithFallback([
       'https://api.binance.com/api/v3/exchangeInfo',
       'https://api.binance.us/api/v3/exchangeInfo'
     ]);
     
-    const source = endpoint.includes('binance.us') ? 'binanceus' : 'binance';
+    const spotSource = spotEndpoint.includes('binance.us') ? 'binanceus' : 'binance';
+    const futuresSource = futuresEndpoint.includes('binance.us') ? 'binanceus' : 'binance';
     
-    if (!exchangeData.symbols || exchangeData.symbols.length === 0) {
-      throw new Error('Invalid exchange info response');
+    // Combine symbols from both, tracking which are futures/spot
+    const symbolMap = new Map();
+    
+    // Process spot symbols
+    if (spotData.symbols) {
+      for (const s of spotData.symbols) {
+        if (s.status === 'TRADING' && s.quoteAsset === 'USDT') {
+          symbolMap.set(s.symbol, {
+            symbol: s.symbol,
+            category: 'Other',
+            is_active: false,
+            new_added_date: new Date().toISOString(),
+            source: [spotSource],
+            is_spot: true,
+            is_futures: false
+          });
+        }
+      }
+    }
+    
+    // Process futures symbols, merge with existing spot entries
+    if (futuresData.symbols) {
+      for (const s of futuresData.symbols) {
+        if (s.status === 'TRADING' && s.symbol.endsWith('USDT')) {
+          if (symbolMap.has(s.symbol)) {
+            const existing = symbolMap.get(s.symbol);
+            existing.is_futures = true;
+            existing.source = [...new Set([...existing.source, futuresSource])];
+          } else {
+            symbolMap.set(s.symbol, {
+              symbol: s.symbol,
+              category: 'Other',
+              is_active: false,
+              new_added_date: new Date().toISOString(),
+              source: [futuresSource],
+              is_spot: false,
+              is_futures: true
+            });
+          }
+        }
+      }
     }
 
-    const symbols = exchangeData.symbols
-      .filter(s => s.status === 'TRADING' && s.quoteAsset === 'USDT')
-      .map(s => ({
-        symbol: s.symbol,
-        category: 'Other',
-        is_active: false,
-        new_added_date: new Date().toISOString(),
-        source: [source]
-      }));
+    const symbols = Array.from(symbolMap.values());
 
     console.log(`Fetched ${symbols.length} trading symbols from Binance`);
 
