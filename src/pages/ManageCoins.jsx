@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
+import { useScannerData } from '@/components/scanner/ScannerContext';
 
 const categoryColors = {
   'Layer 1': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
