@@ -48,7 +48,6 @@ Deno.serve(async (req) => {
           
           allCandles.push(...candles);
         }
-      }
     }
 
     // Bulk insert into PoiData
