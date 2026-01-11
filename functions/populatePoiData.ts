@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
 
       // Delay between symbols to avoid rate limiting
       if (i < symbolsToProcess.length - 1) {
-        await delay(500);
+        await delay(1500);
       }
     }
 
