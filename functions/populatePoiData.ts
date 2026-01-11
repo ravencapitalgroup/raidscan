@@ -20,9 +20,6 @@ Deno.serve(async (req) => {
       const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
       symbolsToProcess = allAssets.map(a => a.symbol);
       console.log(`Fetched ${symbolsToProcess.length} symbols from database`);
-      
-      // Process only first 10 symbols per execution to avoid rate limits
-      symbolsToProcess = symbolsToProcess.slice(0, 10);
       console.log(`Processing ${symbolsToProcess.length} symbols in this batch`);
     }
 
