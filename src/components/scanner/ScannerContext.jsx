@@ -97,7 +97,6 @@ export function ScannerProvider({ children }) {
             price: data.price,
             change24h: data.change24h,
             volume24h: data.volume24h,
-            quoteAssetVolume: data.quoteAssetVolume,
             pois,
             activeRaids: newRaids.filter(r => r.symbol === symbol)
           };

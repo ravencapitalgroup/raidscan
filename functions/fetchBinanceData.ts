@@ -28,12 +28,7 @@ Deno.serve(async (req) => {
           symbol: symbol,
           price: parseFloat(tickerData.lastPrice),
           change24h: parseFloat(tickerData.priceChangePercent),
-          volume24h: parseFloat(tickerData.volume),
-          quoteAssetVolume: parseFloat(tickerData.quoteAssetVolume),
-          highPrice: parseFloat(tickerData.highPrice),
-          lowPrice: parseFloat(tickerData.lowPrice),
-          openPrice: parseFloat(tickerData.openPrice),
-          timestamp: new Date().toISOString()
+          volume24h: parseFloat(tickerData.volume)
         };
       } catch (error) {
         console.error(`Error fetching data for ${ticker}:`, error.message);
