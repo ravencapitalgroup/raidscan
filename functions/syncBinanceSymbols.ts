@@ -22,8 +22,8 @@ const fetchWithFallback = async (endpoints) => {
 // Helper to fetch klines for a symbol
 const fetchKlines = async (symbol, interval, limit = 100) => {
   const endpoints = [
-    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
-    `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+    `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+    `https://fapi.binance.us/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
   ];
   
   try {
@@ -50,12 +50,12 @@ Deno.serve(async (req) => {
     
     try {
       exchangeData = await fetchWithFallback([
-        'https://api.binance.com/api/v3/exchangeInfo'
+        'https://fapi.binance.com/fapi/v1/exchangeInfo'
       ]);
     } catch (err) {
       console.log('Binance endpoint failed, trying Binance US');
       exchangeData = await fetchWithFallback([
-        'https://api.binance.us/api/v3/exchangeInfo'
+        'https://fapi.binance.us/fapi/v1/exchangeInfo'
       ]);
       source = 'binanceus';
     }
