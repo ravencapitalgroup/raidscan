@@ -48,16 +48,16 @@ Deno.serve(async (req) => {
     let exchangeData;
     let source = 'binance';
     
-    try {
-      exchangeData = await fetchWithFallback([
-        'https://api.binance.com/api/v3/exchangeInfo'
-      ]);
-    } catch (err) {
-      console.log('Binance endpoint failed, trying Binance US');
-      exchangeData = await fetchWithFallback([
-        'https://api.binance.us/api/v3/exchangeInfo'
-      ]);
-      source = 'binanceus';
+    const response = await fetchWithFallback([
+      'https://api.binance.com/api/v3/exchangeInfo',
+      'https://api.binance.us/api/v3/exchangeInfo'
+    ]);
+    
+    // Check which endpoint was used based on response
+    exchangeData = response;
+    // If we got here, try to determine source (default to binance)
+    if (!exchangeData.symbols || exchangeData.symbols.length === 0) {
+      throw new Error('Invalid exchange info response');
     }
 
     const symbols = exchangeData.symbols
