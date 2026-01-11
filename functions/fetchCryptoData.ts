@@ -16,14 +16,22 @@ Deno.serve(async (req) => {
     }
 
     // Fetch data from Binance API directly
-    const symbolsStr = symbols.join(',');
-    const tickersUrl = `https://fapi.binance.com/fapi/v1/ticker/24hr?symbols=[${symbols.map(s => `"${s}"`).join(',')}]`;
+    const symbolsJson = JSON.stringify(symbols);
+    const tickersUrl = `https://fapi.binance.com/fapi/v1/ticker/24hr?symbols=${encodeURIComponent(symbolsJson)}`;
+    
+    console.log('Fetching from Binance:', tickersUrl);
     
     const response = await fetch(tickersUrl);
+    if (!response.ok) {
+      console.error('Binance API error:', response.status, response.statusText);
+      return Response.json({ error: `Binance API error: ${response.status}` }, { status: response.status });
+    }
+    
     const data = await response.json();
+    console.log('Binance response:', data);
 
     if (!Array.isArray(data)) {
-      return Response.json({ error: 'Failed to fetch data from Binance' }, { status: 500 });
+      return Response.json({ error: 'Invalid response format from Binance' }, { status: 500 });
     }
 
     const prices = data.reduce((acc, item) => {
