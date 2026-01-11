@@ -35,50 +35,19 @@ export default function ManageCoins() {
   const queryClient = useQueryClient();
   const { scanMarkets } = useScannerData();
 
-  const { data: binanceAssets = [] } = useQuery({
-    queryKey: ['watchlistAssetsBinance'],
-    queryFn: () => base44.entities.WatchlistAssetBinance.list(),
+  const { data: assets = [] } = useQuery({
+    queryKey: ['watchlistAssets'],
+    queryFn: () => base44.entities.WatchlistAsset.list(),
   });
-
-  const { data: binanceUSAssets = [] } = useQuery({
-    queryKey: ['watchlistAssetsBinanceUS'],
-    queryFn: () => base44.entities.WatchlistAssetBinanceUS.list(),
-  });
-
-  const rawAssets = [...binanceAssets, ...binanceUSAssets];
-
-  // Remove duplicates - keep the most recently created one for each symbol
-  const assets = rawAssets.reduce((acc, asset) => {
-    const existing = acc.find(a => a.symbol === asset.symbol);
-    if (!existing) {
-      acc.push(asset);
-    } else if (new Date(asset.created_date) > new Date(existing.created_date)) {
-      const index = acc.indexOf(existing);
-      acc[index] = asset;
-    }
-    return acc;
-  }, []);
 
   const toggleAsset = useMutation({
-    mutationFn: async ({ id, symbol, is_active, source }) => {
-      const normalizedSymbol = normalizeSymbol(symbol);
-      const entity = source === 'binance' ? 'WatchlistAssetBinance' : 'WatchlistAssetBinanceUS';
-      
-      // Update the specific asset with normalized symbol
-      await base44.entities[entity].update(id, { symbol: normalizedSymbol, is_active });
-      
-      // Find and delete any duplicates of this symbol (keep the one we just updated)
-      const allAssets = await base44.entities[entity].list();
-      const duplicates = allAssets.filter(a => a.symbol === normalizedSymbol && a.id !== id);
-      for (const dup of duplicates) {
-        await base44.entities[entity].delete(dup.id);
-      }
+    mutationFn: async ({ id, is_active }) => {
+      await base44.entities.WatchlistAsset.update(id, { is_active });
       
       // If turning on, trigger refreshes after 2 seconds
       if (is_active) {
         setTimeout(async () => {
           try {
-            // Refresh market prices
             await scanMarkets();
           } catch (err) {
             console.error('Error refreshing data after toggle:', err);
@@ -87,8 +56,7 @@ export default function ManageCoins() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['watchlistAssetsBinance'] });
-      queryClient.invalidateQueries({ queryKey: ['watchlistAssetsBinanceUS'] });
+      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
     },
   });
 
@@ -199,9 +167,9 @@ export default function ManageCoins() {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {categoryAssets.map((asset) => (
-                  <motion.button
-                    key={asset.id}
-                    onClick={() => toggleAsset.mutate({ id: asset.id, symbol: asset.symbol, is_active: !asset.is_active, source: binanceAssets.find(a => a.id === asset.id) ? 'binance' : 'binanceus' })}
+                   <motion.button
+                     key={asset.id}
+                     onClick={() => toggleAsset.mutate({ id: asset.id, is_active: !asset.is_active })}
                     className={cn(
                       "flex items-center justify-between p-4 rounded-xl border transition-all",
                       "hover:scale-[1.02] active:scale-[0.98]",
