@@ -145,10 +145,30 @@ Deno.serve(async (req) => {
 
         console.log(`Created ${quarterlyRecordsCreated} quarterly POI records`);
 
+    // Sort all POI data by timestamp (earliest to oldest)
+    const allPoiDataFinal = await base44.asServiceRole.entities.PoiData.list();
+    const sortedBySymbol = {};
+    
+    allPoiDataFinal.forEach(poi => {
+      if (!sortedBySymbol[poi.symbol]) {
+        sortedBySymbol[poi.symbol] = [];
+      }
+      sortedBySymbol[poi.symbol].push(poi);
+    });
+
+    // Sort each symbol's data by timestamp ascending (earliest first)
+    for (const symbol in sortedBySymbol) {
+      sortedBySymbol[symbol].sort((a, b) => a.timestamp - b.timestamp);
+    }
+
+    console.log(`Sorted POI data by timestamp for ${Object.keys(sortedBySymbol).length} symbols`);
+
     return Response.json({
       success: true,
       recordsDeleted,
-      message: `Successfully processed POI data: deleted ${recordsDeleted} old records`
+      quarterlyRecordsCreated,
+      sortedSymbols: Object.keys(sortedBySymbol).length,
+      message: `Successfully processed POI data: deleted ${recordsDeleted} old records, created ${quarterlyRecordsCreated} quarterly records, sorted ${Object.keys(sortedBySymbol).length} symbols by timestamp`
     });
   } catch (error) {
     console.error('POI update error:', error);
