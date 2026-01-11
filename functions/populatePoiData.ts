@@ -9,17 +9,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { symbols, limit = 100 } = await req.json();
+    const { symbol, limit = 100 } = await req.json();
 
-    if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
-      return Response.json({ error: 'symbols array is required' }, { status: 400 });
+    if (!symbol || typeof symbol !== 'string') {
+      return Response.json({ error: 'symbol string is required' }, { status: 400 });
     }
 
     const timeframes = ['1w', '1M'];
     const allCandles = [];
 
-    // Fetch klines for each symbol and timeframe
-    for (const symbol of symbols) {
+    // Fetch klines for each timeframe
+    for (const timeframe of timeframes) {
+      for (const tf of [timeframe]) {
       for (const timeframe of timeframes) {
         const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`;
         console.log(`Fetching: ${url}`);
