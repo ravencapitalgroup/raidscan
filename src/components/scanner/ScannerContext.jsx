@@ -85,6 +85,7 @@ export function ScannerProvider({ children }) {
   const [refreshInterval, setRefreshInterval] = useState(300000);
   const [nextRefresh, setNextRefresh] = useState(null);
   const [error, setError] = useState(null);
+  const [timezone, setTimezone] = useState('UTC');
 
   const { data: rawWatchlistAssets = [] } = useQuery({
     queryKey: ['watchlistAssets'],
@@ -129,7 +130,7 @@ export function ScannerProvider({ children }) {
                 raid_direction: isHighRaid ? 'bearish' : 'bullish',
                 poi_price: data.price,
                 raid_price: prices[symbol].price,
-                timestamp: new Date().toLocaleTimeString()
+                timestamp: new Date().toISOString()
               });
             }
           });
@@ -186,7 +187,9 @@ export function ScannerProvider({ children }) {
     setRefreshInterval,
     nextRefresh,
     error,
-    scanMarkets
+    scanMarkets,
+    timezone,
+    setTimezone
   };
 
   return (

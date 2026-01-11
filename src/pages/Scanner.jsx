@@ -24,7 +24,9 @@ export default function Scanner() {
     setRefreshInterval, 
     nextRefresh, 
     error, 
-    scanMarkets 
+    scanMarkets,
+    timezone,
+    setTimezone
   } = useScannerData();
 
   // Fetch saved alerts
@@ -77,6 +79,8 @@ export default function Scanner() {
           refreshInterval={refreshInterval}
           onRefreshIntervalChange={setRefreshInterval}
           nextRefresh={nextRefresh}
+          timezone={timezone}
+          onTimezoneChange={setTimezone}
         />
         
         <StatsBar stats={stats} />
