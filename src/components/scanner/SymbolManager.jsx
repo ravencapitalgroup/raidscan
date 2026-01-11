@@ -55,10 +55,13 @@ export default function SymbolManager({ onUpdate }) {
           }
         });
         
+        // Only BTC, ETH, and SOL are active by default
+        const defaultActive = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
+        
         await base44.entities.WatchlistAsset.bulkCreate(
           categorized.coins.map(c => ({ 
             symbol: c.symbol, 
-            is_active: true,
+            is_active: defaultActive.includes(c.symbol),
             category: c.category 
           }))
         );
