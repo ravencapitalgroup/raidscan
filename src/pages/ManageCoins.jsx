@@ -52,12 +52,13 @@ export default function ManageCoins() {
 
   const toggleAsset = useMutation({
     mutationFn: async ({ id, symbol, is_active }) => {
-      // Update the specific asset
-      await base44.entities.WatchlistAsset.update(id, { is_active });
+      const normalizedSymbol = normalizeSymbol(symbol);
+      // Update the specific asset with normalized symbol
+      await base44.entities.WatchlistAsset.update(id, { symbol: normalizedSymbol, is_active });
       
       // Find and delete any duplicates of this symbol (keep the one we just updated)
       const allAssets = await base44.entities.WatchlistAsset.list();
-      const duplicates = allAssets.filter(a => a.symbol === symbol && a.id !== id);
+      const duplicates = allAssets.filter(a => a.symbol === normalizedSymbol && a.id !== id);
       for (const dup of duplicates) {
         await base44.entities.WatchlistAsset.delete(dup.id);
       }
