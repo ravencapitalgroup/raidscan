@@ -64,16 +64,17 @@ export default function ManageCoins() {
   const toggleAllAssets = useMutation({
     mutationFn: async () => {
       const shouldActivate = activeCount < assets.length / 2;
-      const batchSize = 3; // Update 3 assets at a time
-      const delayBetweenBatches = 3000; // 3 seconds between batches
+      const batchSize = 2; // Update 2 assets at a time
+      const delayBetweenUpdates = 3000; // 3 seconds between each update
+      const delayBetweenBatches = 8000; // 8 seconds between batches
       
       for (let i = 0; i < assets.length; i += batchSize) {
         const batch = assets.slice(i, i + batchSize);
         
-        // Process batch sequentially with 500ms delay between each
+        // Process batch sequentially with 3 second delay between each
         for (const asset of batch) {
           await base44.entities.WatchlistAsset.update(asset.id, { is_active: shouldActivate });
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, delayBetweenUpdates));
         }
         
         // Wait between batches to prevent rate limiting
