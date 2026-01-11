@@ -41,6 +41,18 @@ export default function ManageCoins() {
     },
   });
 
+  const bulkToggle = useMutation({
+    mutationFn: async (is_active) => {
+      for (const asset of assets) {
+        await base44.entities.WatchlistAsset.update(asset.id, { is_active });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
+      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
+    },
+  });
+
   const categories = ['all', ...Object.keys(categoryColors)];
   
   const filteredAssets = assets.filter(asset => {
@@ -88,7 +100,27 @@ export default function ManageCoins() {
               </div>
             </div>
             
-            <SymbolManager />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => bulkToggle.mutate(true)}
+                disabled={bulkToggle.isPending}
+                className="bg-slate-800/50 border-slate-700 text-emerald-400 hover:bg-emerald-500/10"
+              >
+                Select All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => bulkToggle.mutate(false)}
+                disabled={bulkToggle.isPending}
+                className="bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50"
+              >
+                Deselect All
+              </Button>
+              <SymbolManager />
+            </div>
           </div>
 
           {/* Search & Stats */}

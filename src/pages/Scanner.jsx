@@ -161,7 +161,7 @@ export default function Scanner() {
     
     setAssetData(newAssetData);
     setIsScanning(false);
-  }, []);
+  }, [symbols]);
 
   // Initial scan and periodic refresh
   useEffect(() => {
@@ -176,15 +176,7 @@ export default function Scanner() {
     }, refreshInterval);
     
     return () => clearInterval(interval);
-  }, [refreshInterval]);
-  
-  // Update countdown timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNextRefresh(prev => prev ? prev : Date.now() + refreshInterval);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [refreshInterval]);
+  }, [scanMarkets, refreshInterval]);
 
   // Filter assets
   const filteredSymbols = symbols.filter(symbol => {
