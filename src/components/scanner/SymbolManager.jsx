@@ -59,11 +59,14 @@ export default function SymbolManager({ onUpdate }) {
         const defaultActive = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
         
         await base44.entities.WatchlistAsset.bulkCreate(
-          categorized.coins.map(c => ({ 
-            symbol: c.symbol, 
-            is_active: defaultActive.includes(c.symbol),
-            category: c.category 
-          }))
+          toAdd.map(symbol => {
+            const coinInfo = categorized.coins.find(c => c.symbol === symbol);
+            return {
+              symbol: symbol,
+              is_active: defaultActive.includes(symbol),
+              category: coinInfo ? coinInfo.category : 'Other'
+            };
+          })
         );
       }
       

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
-import SymbolManager from '@/components/scanner/SymbolManager';
+
 
 const categoryColors = {
   'Layer 1': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -43,7 +43,7 @@ export default function ManageCoins() {
 
   const bulkToggle = useMutation({
     mutationFn: async (is_active) => {
-      const updates = filteredAssets.map(asset => 
+      const updates = assets.map(asset => 
         base44.entities.WatchlistAsset.update(asset.id, { is_active })
       );
       await Promise.all(updates);
@@ -120,7 +120,6 @@ export default function ManageCoins() {
               >
                 Deselect All
               </Button>
-              <SymbolManager />
             </div>
           </div>
 
