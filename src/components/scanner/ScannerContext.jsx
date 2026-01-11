@@ -45,10 +45,19 @@ const calculatePOIs = (symbol, currentPrice) => {
   };
 };
 
+// Normalize symbol to Binance format (e.g., BTC -> BTCUSDT)
+const normalizeSymbol = (symbol) => {
+  if (!symbol.endsWith('USDT')) {
+    return symbol + 'USDT';
+  }
+  return symbol;
+};
+
 // Fetch prices from Binance via backend function
 const fetchPrices = async (symbols) => {
-  const result = await base44.functions.invoke('fetchBinancePrices', { symbols });
-  
+  const normalizedSymbols = symbols.map(normalizeSymbol);
+  const result = await base44.functions.invoke('fetchBinancePrices', { symbols: normalizedSymbols });
+
   return result.prices.reduce((acc, item) => {
     if (item.error) {
       console.error(`Error fetching ${item.symbol}:`, item.error);
