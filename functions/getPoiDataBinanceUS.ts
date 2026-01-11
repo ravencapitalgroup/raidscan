@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
       message: `Updated POI data for Binance US (${binanceUSTotalInserted} candles)`
     });
   } catch (error) {
-    console.error(`Fatal error in getBinanceUSPoiData: ${error.message}`);
+    console.error(`Fatal error in getPoiDataBinanceUS: ${error.message}`);
     return Response.json({
       success: false,
       error: error.message,
