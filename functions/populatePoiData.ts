@@ -93,75 +93,85 @@ Deno.serve(async (req) => {
     };
 
     let insertedCount = 0;
+    let rateLimitHit = false;
 
     // Process each symbol with rate limiting
     for (let i = 0; i < symbolsToProcess.length; i++) {
       const symbol = symbolsToProcess[i];
       const candlesForSymbol = [];
 
-      for (const timeframe of timeframes) {
-        const data = await fetchKlinesWithRetry(symbol, timeframe);
+      try {
+        for (const timeframe of timeframes) {
+          const data = await fetchKlinesWithRetry(symbol, timeframe);
 
-        if (Array.isArray(data) && data.length > 0) {
-          // Delete existing data for this symbol/timeframe in batches
-          const existingData = await base44.asServiceRole.entities.PoiData.filter({ symbol, timeframe });
-          for (let j = 0; j < existingData.length; j += 50) {
-            const batch = existingData.slice(j, j + 50);
-            for (const record of batch) {
-              await base44.asServiceRole.entities.PoiData.delete(record.id);
+          if (Array.isArray(data) && data.length > 0) {
+            // Delete existing data for this symbol/timeframe in batches
+            const existingData = await base44.asServiceRole.entities.PoiData.filter({ symbol, timeframe });
+            for (let j = 0; j < existingData.length; j += 50) {
+              const batch = existingData.slice(j, j + 50);
+              for (const record of batch) {
+                await base44.asServiceRole.entities.PoiData.delete(record.id);
+              }
+              if (j + 50 < existingData.length) {
+                await delay(100); // Delay between delete batches
+              }
             }
-            if (j + 50 < existingData.length) {
-              await delay(100); // Delay between delete batches
+
+            // Transform Binance kline response to our schema
+            const candles = data.map(kline => ({
+              symbol,
+              timeframe,
+              timestamp: kline[0],
+              open: parseFloat(kline[1]),
+              high: parseFloat(kline[2]),
+              low: parseFloat(kline[3]),
+              close: parseFloat(kline[4]),
+              volume: parseFloat(kline[7]),
+              quoteAssetVolume: parseFloat(kline[8]),
+              numberOfTrades: parseInt(kline[8]),
+              takerBuyBaseAssetVolume: parseFloat(kline[9]),
+              takerBuyQuoteAssetVolume: parseFloat(kline[10])
+            }));
+            
+            candlesForSymbol.push(...candles);
+          }
+
+          // Delay between timeframe requests
+          if (timeframes.indexOf(timeframe) < timeframes.length - 1) {
+            await delay(500);
+          }
+        }
+
+        // Bulk insert candles for this symbol in smaller batches
+        if (candlesForSymbol.length > 0) {
+          const batchSize = 100;
+          for (let j = 0; j < candlesForSymbol.length; j += batchSize) {
+            const batch = candlesForSymbol.slice(j, j + batchSize);
+            try {
+              const result = await base44.asServiceRole.entities.PoiData.bulkCreate(batch);
+              insertedCount += result?.length || batch.length;
+              console.log(`Inserted ${batch.length} candles for ${symbol}`);
+            } catch (err) {
+              console.error(`BulkCreate error for ${symbol}: ${err.message}`);
+            }
+            
+            if (j + batchSize < candlesForSymbol.length) {
+              await delay(100);
             }
           }
-
-          // Transform Binance kline response to our schema
-          const candles = data.map(kline => ({
-            symbol,
-            timeframe,
-            timestamp: kline[0],
-            open: parseFloat(kline[1]),
-            high: parseFloat(kline[2]),
-            low: parseFloat(kline[3]),
-            close: parseFloat(kline[4]),
-            volume: parseFloat(kline[7]),
-            quoteAssetVolume: parseFloat(kline[8]),
-            numberOfTrades: parseInt(kline[8]),
-            takerBuyBaseAssetVolume: parseFloat(kline[9]),
-            takerBuyQuoteAssetVolume: parseFloat(kline[10])
-          }));
-          
-          candlesForSymbol.push(...candles);
         }
 
-        // Delay between timeframe requests
-        if (timeframes.indexOf(timeframe) < timeframes.length - 1) {
-          await delay(300);
+        // Delay between symbols to avoid rate limiting
+        if (i < symbolsToProcess.length - 1) {
+          await delay(2000);
         }
-      }
-
-      // Bulk insert candles for this symbol in smaller batches
-      if (candlesForSymbol.length > 0) {
-        const batchSize = 100;
-        for (let j = 0; j < candlesForSymbol.length; j += batchSize) {
-          const batch = candlesForSymbol.slice(j, j + batchSize);
-          try {
-            const result = await base44.asServiceRole.entities.PoiData.bulkCreate(batch);
-            insertedCount += result?.length || batch.length;
-            console.log(`Inserted ${batch.length} candles for ${symbol}`);
-          } catch (err) {
-            console.error(`BulkCreate error for ${symbol}: ${err.message}`);
-          }
-          
-          if (j + batchSize < candlesForSymbol.length) {
-            await delay(100);
-          }
+      } catch (err) {
+        if (err.message === 'RATE_LIMIT_HIT') {
+          console.error(`Rate limit hit while processing ${symbol}. Stopping execution.`);
+          rateLimitHit = true;
+          break;
         }
-      }
-
-      // Delay between symbols to avoid rate limiting
-      if (i < symbolsToProcess.length - 1) {
-        await delay(1500);
+        console.error(`Error processing ${symbol}: ${err.message}`);
       }
     }
 
