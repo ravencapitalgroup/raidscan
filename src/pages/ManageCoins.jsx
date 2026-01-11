@@ -64,6 +64,20 @@ export default function ManageCoins() {
       for (const dup of duplicates) {
         await base44.entities.WatchlistAsset.delete(dup.id);
       }
+      
+      // If turning on, trigger refreshes after 2 seconds
+      if (is_active) {
+        setTimeout(async () => {
+          try {
+            // Refresh market prices
+            await scanMarkets();
+            // Refresh POI data
+            await base44.functions.invoke('populatePoiData', { symbols: [normalizedSymbol] });
+          } catch (err) {
+            console.error('Error refreshing data after toggle:', err);
+          }
+        }, 2000);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
