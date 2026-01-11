@@ -139,15 +139,15 @@ Deno.serve(async (req) => {
 
           // Delay between timeframe requests
           if (timeframes.indexOf(timeframe) < timeframes.length - 1) {
-            await delay(500);
+            await delay(1500);
           }
         }
 
         // Bulk insert candles for this symbol in smaller batches
         if (candlesForSymbol.length > 0) {
-          const batchSize = 100;
-          for (let j = 0; j < candlesForSymbol.length; j += batchSize) {
-            const batch = candlesForSymbol.slice(j, j + batchSize);
+          const insertBatchSize = 100;
+          for (let j = 0; j < candlesForSymbol.length; j += insertBatchSize) {
+            const batch = candlesForSymbol.slice(j, j + insertBatchSize);
             try {
               const result = await base44.asServiceRole.entities.PoiData.bulkCreate(batch);
               insertedCount += result?.length || batch.length;
@@ -156,15 +156,15 @@ Deno.serve(async (req) => {
               console.error(`BulkCreate error for ${symbol}: ${err.message}`);
             }
             
-            if (j + batchSize < candlesForSymbol.length) {
-              await delay(100);
+            if (j + insertBatchSize < candlesForSymbol.length) {
+              await delay(200);
             }
           }
         }
 
         // Delay between symbols to avoid rate limiting
         if (i < symbolsToProcess.length - 1) {
-          await delay(2000);
+          await delay(3000);
         }
       } catch (err) {
         if (err.message === 'RATE_LIMIT_HIT') {
