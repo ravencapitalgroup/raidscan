@@ -44,11 +44,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Fetch exchange info from Binance with fallback
-    const exchangeData = await fetchWithFallback([
-      'https://fapi.binance.com/fapi/v1/exchangeInfo',
-      'https://fapi.binance.us/fapi/v1/exchangeInfo'
-    ]);
+    // Fetch exchange info from Binance with fallback and track source
+    let exchangeData;
+    let source = 'binance';
+    
+    try {
+      exchangeData = await fetchWithFallback([
+        'https://fapi.binance.com/fapi/v1/exchangeInfo'
+      ]);
+    } catch (err) {
+      console.log('Binance endpoint failed, trying Binance US');
+      exchangeData = await fetchWithFallback([
+        'https://fapi.binance.us/fapi/v1/exchangeInfo'
+      ]);
+      source = 'binanceus';
+    }
 
     const symbols = exchangeData.symbols
       .filter(s => s.status === 'TRADING' && s.quoteAsset === 'USDT')
@@ -56,7 +66,8 @@ Deno.serve(async (req) => {
         symbol: s.symbol,
         category: 'Other',
         is_active: false,
-        new_added_date: new Date().toISOString()
+        new_added_date: new Date().toISOString(),
+        source: [source]
       }));
 
     console.log(`Fetched ${symbols.length} trading symbols from Binance`);
