@@ -47,26 +47,39 @@ const calculatePOIs = (symbol, currentPrice) => {
   };
 };
 
-// Fetch current perpetual futures prices directly from Binance
+// Fetch current perpetual futures prices from Binance using AI
 const fetchPrices = async (symbols) => {
   try {
-    // Fetch all ticker data from Binance Futures API
-    const response = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-    const allTickers = await response.json();
+    const symbolList = symbols.map(s => s.replace('USDT', '')).join(', ');
     
-    // Filter and map to our symbols
-    const pricesMap = {};
-    for (const symbol of symbols) {
-      const ticker = allTickers.find(t => t.symbol === symbol);
-      if (ticker) {
-        pricesMap[symbol] = {
-          price: parseFloat(ticker.lastPrice),
-          change24h: parseFloat(ticker.priceChangePercent)
-        };
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `Get the current live Binance PERPETUAL FUTURES prices (NOT spot prices) and 24h price change percentages for these trading pairs: ${symbolList}/USDT. Make sure to use Binance Futures/Perpetuals data. Return ONLY the data, no explanations.`,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          prices: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                symbol: { type: "string", description: "Symbol with USDT suffix, e.g. BTCUSDT" },
+                price: { type: "number" },
+                change24h: { type: "number", description: "24h percentage change" }
+              }
+            }
+          }
+        }
       }
-    }
+    });
     
-    return pricesMap;
+    return result.prices.reduce((acc, item) => {
+      acc[item.symbol] = {
+        price: item.price,
+        change24h: item.change24h
+      };
+      return acc;
+    }, {});
   } catch (error) {
     console.error('Error fetching prices:', error);
     throw error;
