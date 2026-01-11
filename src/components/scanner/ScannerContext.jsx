@@ -102,24 +102,24 @@ export function ScannerProvider({ children }) {
       const prices = await fetchPrices(symbols);
       console.log('Fetched prices:', prices);
 
-      // Fetch PoiData from database for all symbols (both Binance and Binance US)
-              const binancePoiData = await base44.entities.PoiDataBinance.list();
-              const binanceUSPoiData = await base44.entities.PoiDataBinanceUS.list();
-              const allPoiData = [...binancePoiData, ...binanceUSPoiData];
-              console.log('Fetched PoiData (' + allPoiData.length + ' records: ' + binancePoiData.length + ' Binance, ' + binanceUSPoiData.length + ' Binance US)');
+      // Fetch PoiData from both Binance and Binance US
+      const binancePoiData = await base44.entities.PoiDataBinance.list();
+      const binanceUSPoiData = await base44.entities.PoiDataBinanceUS.list();
+      const allPoiData = [...binancePoiData, ...binanceUSPoiData];
+      console.log('Fetched PoiData (' + allPoiData.length + ' total records)');
 
-              const newAssetData = {};
-              const newRaids = [];
+      const newAssetData = {};
+      const newRaids = [];
 
-              for (const symbol of symbols) {
-                const normalizedSymbol = normalizeSymbol(symbol);
-                // Try normalized symbol first, then try without USDT as fallback
-                const priceKey = prices[normalizedSymbol] ? normalizedSymbol : normalizedSymbol.replace('USDT', '');
-                if (prices[priceKey]) {
-                  // Get PoiData for this symbol from database (search both Binance and Binance US)
-                  const weeklyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1w');
-                  const monthlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1M');
-                  const quarterlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1q');
+      for (const symbol of symbols) {
+        const normalizedSymbol = normalizeSymbol(symbol);
+        // Try normalized symbol first, then try without USDT as fallback
+        const priceKey = prices[normalizedSymbol] ? normalizedSymbol : normalizedSymbol.replace('USDT', '');
+        if (prices[priceKey]) {
+          // Get PoiData for this symbol from database
+          const weeklyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1w');
+          const monthlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1M');
+          const quarterlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1q');
 
           // Build pois from database data
           const pois = {
