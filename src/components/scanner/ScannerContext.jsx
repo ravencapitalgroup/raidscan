@@ -45,35 +45,20 @@ const calculatePOIs = (symbol, currentPrice) => {
   };
 };
 
-// Fetch prices from Binance
+// Fetch prices from Binance via backend function
 const fetchPrices = async (symbols) => {
-  const symbolList = symbols.map(s => s.replace('USDT', '')).join(', ');
-  
-  const result = await base44.integrations.Core.InvokeLLM({
-    prompt: `Get the current live Binance PERPETUAL FUTURES prices (NOT spot prices) and 24h price change percentages for these trading pairs: ${symbolList}/USDT. Make sure to use Binance Futures/Perpetuals data. Return ONLY the data, no explanations.`,
-    add_context_from_internet: true,
-    response_json_schema: {
-      type: "object",
-      properties: {
-        prices: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              symbol: { type: "string", description: "Symbol with USDT suffix, e.g. BTCUSDT" },
-              price: { type: "number" },
-              change24h: { type: "number", description: "24h percentage change" }
-            }
-          }
-        }
-      }
-    }
-  });
+  const result = await base44.functions.invoke('fetchBinancePrices', { symbols });
   
   return result.prices.reduce((acc, item) => {
+    if (item.error) {
+      console.error(`Error fetching ${item.symbol}:`, item.error);
+      return acc;
+    }
     acc[item.symbol] = {
-      price: item.price,
-      change24h: item.change24h
+      price: item.lastPrice,
+      change24h: item.priceChangePercent,
+      volume: item.volume,
+      quoteAssetVolume: item.quoteAssetVolume
     };
     return acc;
   }, {});
