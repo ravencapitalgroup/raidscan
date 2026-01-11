@@ -91,6 +91,17 @@ Deno.serve(async (req) => {
         if (binanceUSRateLimitHit) break;
 
         const symbol = symbolsInBatch[i];
+        const assetDetails = binanceUSAssets.find(a => a.symbol === symbol);
+
+        // Skip if updated less than 4 hours ago
+        if (assetDetails?.last_updated_date) {
+          const lastUpdated = new Date(assetDetails.last_updated_date);
+          if (now.getTime() - lastUpdated.getTime() < fourHoursMs) {
+            console.log(`Skipping ${symbol} (last updated ${Math.round((now.getTime() - lastUpdated.getTime()) / 60000)} minutes ago)`);
+            continue;
+          }
+        }
+
         const candlesForSymbol = [];
 
         try {
