@@ -25,9 +25,9 @@ const fetchKlines = async (symbol, interval, limit = 100) => {
     `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
     `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
   ];
-
+  
   try {
-    const { data } = await fetchWithFallback(endpoints);
+    const data = await fetchWithFallback(endpoints);
     return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error(`Failed to fetch klines for ${symbol}:`, err.message);
