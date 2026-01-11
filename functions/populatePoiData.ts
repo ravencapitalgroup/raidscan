@@ -47,6 +47,8 @@ Deno.serve(async (req) => {
           }));
           
           allCandles.push(...candles);
+        } else {
+          console.log(`NOT an array. Data is: ${JSON.stringify(data)}`);
         }
     }
 
