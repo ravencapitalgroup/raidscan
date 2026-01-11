@@ -93,6 +93,7 @@ export default function Scanner() {
   const [assetData, setAssetData] = useState({});
   const [refreshInterval, setRefreshInterval] = useState(300000); // Default 5 minutes
   const [nextRefresh, setNextRefresh] = useState(null);
+  const [error, setError] = useState(null);
   const queryClient = useQueryClient();
 
   // Fetch active symbols from database
@@ -126,41 +127,56 @@ export default function Scanner() {
     if (symbols.length === 0) return;
     
     setIsScanning(true);
+    setError(null);
     
-    const prices = await fetchPrices(symbols);
-    
-    const newAssetData = {};
-    const newRaids = [];
-    
-    for (const symbol of symbols) {
-      if (prices[symbol]) {
-        const pois = calculatePOIs(symbol, prices[symbol].price);
-        
-        // Check for active raids and create alerts
-        Object.entries(pois).forEach(([poiType, data]) => {
-          if (data.isActive) {
-            const isHighRaid = poiType.includes('H');
-            newRaids.push({
-              symbol,
-              poi_type: poiType,
-              raid_direction: isHighRaid ? 'bearish' : 'bullish',
-              poi_price: data.price,
-              raid_price: prices[symbol].price,
-              timestamp: new Date().toLocaleTimeString()
-            });
-          }
-        });
-        
-        newAssetData[symbol] = {
-          ...prices[symbol],
-          pois,
-          activeRaids: newRaids.filter(r => r.symbol === symbol)
-        };
+    try {
+      const prices = await fetchPrices(symbols);
+      
+      const newAssetData = {};
+      const newRaids = [];
+      
+      for (const symbol of symbols) {
+        if (prices[symbol]) {
+          const pois = calculatePOIs(symbol, prices[symbol].price);
+          
+          // Check for active raids and create alerts
+          Object.entries(pois).forEach(([poiType, data]) => {
+            if (data.isActive) {
+              const isHighRaid = poiType.includes('H');
+              newRaids.push({
+                symbol,
+                poi_type: poiType,
+                raid_direction: isHighRaid ? 'bearish' : 'bullish',
+                poi_price: data.price,
+                raid_price: prices[symbol].price,
+                timestamp: new Date().toLocaleTimeString()
+              });
+            }
+          });
+          
+          newAssetData[symbol] = {
+            ...prices[symbol],
+            pois,
+            activeRaids: newRaids.filter(r => r.symbol === symbol)
+          };
+        }
       }
+      
+      setAssetData(newAssetData);
+    } catch (err) {
+      console.error('Scan error:', err);
+      const errorMessage = err.message || err.toString();
+      
+      if (errorMessage.includes('Rate limit')) {
+        setError('Rate limit reached. Please wait before refreshing again.');
+      } else if (errorMessage.includes('502')) {
+        setError('Server temporarily unavailable. Will retry automatically.');
+      } else {
+        setError('Failed to fetch prices. Will retry automatically.');
+      }
+    } finally {
+      setIsScanning(false);
     }
-    
-    setAssetData(newAssetData);
-    setIsScanning(false);
   }, [symbols]);
 
   // Initial scan and periodic refresh
@@ -228,6 +244,13 @@ export default function Scanner() {
         />
         
         <StatsBar stats={stats} />
+        
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
+            ⚠️ {error}
+          </div>
+        )}
         
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
