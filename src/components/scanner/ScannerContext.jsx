@@ -101,10 +101,10 @@ export function ScannerProvider({ children }) {
 
   const scanMarkets = async () => {
     if (symbols.length === 0) return;
-    
+
     setIsScanning(true);
     setError(null);
-    
+
     try {
       const prices = await fetchPrices(symbols);
 
@@ -115,12 +115,11 @@ export function ScannerProvider({ children }) {
       const newRaids = [];
 
       for (const symbol of symbols) {
-        const normalizedSymbol = normalizeSymbol(symbol);
-        if (prices[normalizedSymbol]) {
-          // Get PoiData for this symbol from database (normalize for lookup)
-          const weeklyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1w');
-          const monthlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1M');
-          
+        if (prices[symbol]) {
+          // Get PoiData for this symbol from database
+          const weeklyData = allPoiData.find(poi => poi.symbol === symbol && poi.timeframe === '1w');
+          const monthlyData = allPoiData.find(poi => poi.symbol === symbol && poi.timeframe === '1M');
+
           // Build pois from database data
           const pois = {
             PWH: weeklyData ? { price: weeklyData.high, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
@@ -128,25 +127,25 @@ export function ScannerProvider({ children }) {
             PMH: monthlyData ? { price: monthlyData.high, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
             PML: monthlyData ? { price: monthlyData.low, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false }
           };
-          
+
           // Calculate quarterly POIs if not in database
-          const calculated = calculatePOIs(symbol, prices[normalizedSymbol].price);
+          const calculated = calculatePOIs(symbol, prices[symbol].price);
           pois.PQH = calculated.PQH;
           pois.PQL = calculated.PQL;
 
           Object.entries(pois).forEach(([poiType, data]) => {
             if (data.isActive && data.price > 0) {
               const isHighRaid = poiType.includes('H');
-              const distancePercent = Math.abs((prices[normalizedSymbol].price - data.price) / data.price) * 100;
+              const distancePercent = Math.abs((prices[symbol].price - data.price) / data.price) * 100;
 
               // Only flag as raid if price is within 2% of POI
               if (distancePercent < 2) {
                 newRaids.push({
-                  symbol: normalizedSymbol,
+                  symbol: symbol,
                   poi_type: poiType,
                   raid_direction: isHighRaid ? 'bullish' : 'bearish',
                   poi_price: data.price,
-                  raid_price: prices[normalizedSymbol].price,
+                  raid_price: prices[symbol].price,
                   timestamp: new Date().toISOString()
                 });
               }
@@ -154,9 +153,9 @@ export function ScannerProvider({ children }) {
           });
 
           newAssetData[symbol] = {
-            ...prices[normalizedSymbol],
+            ...prices[symbol],
             pois,
-            activeRaids: newRaids.filter(r => r.symbol === normalizedSymbol)
+            activeRaids: newRaids.filter(r => r.symbol === symbol)
           };
         }
       }
