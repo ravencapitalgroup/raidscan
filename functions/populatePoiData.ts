@@ -10,126 +10,117 @@ Deno.serve(async (req) => {
     }
 
     const limit = 10;
-    const batchSize = 20; // Process 20 symbols per batch
-    const cooldownMs = 60000; // 1 minute cooldown between batches
+    const batchSize = 20;
+    const cooldownMs = 60000;
 
-    console.log(`Starting POI data update for all symbols`);
+    console.log(`Starting POI data update for Binance and Binance US`);
 
-    // Get all symbols
+    // Get all assets grouped by source
     const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
-    const allSymbols = allAssets.map(a => a.symbol);
-    console.log(`Fetched ${allSymbols.length} total symbols from database`);
+    
+    const binanceAssets = allAssets.filter(a => a.source && a.source.includes('binance'));
+    const binanceUSAssets = allAssets.filter(a => a.source && a.source.includes('binanceus'));
 
-    // Calculate number of batches
-    const numBatches = Math.ceil(allSymbols.length / batchSize);
-    console.log(`Will process ${numBatches} batches of ${batchSize} symbols each`);
-
-    let totalInserted = 0;
-    let rateLimitHit = false;
+    console.log(`Fetched ${binanceAssets.length} Binance symbols and ${binanceUSAssets.length} Binance US symbols`);
 
     const timeframes = ['1w', '1M'];
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Helper function to fetch klines from endpoints
-    const fetchKlinesInternal = async (sym, timeframe) => {
-      const endpoints = [
-        `https://fapi.binance.com/fapi/v1/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`,
-        `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`,
-        `https://api.binance.us/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`
-      ];
+    // Helper function to fetch klines from specific endpoint
+    const fetchKlines = async (sym, timeframe, endpoint) => {
+      try {
+        const response = await fetch(endpoint);
+        await delay(2000);
 
-      for (const url of endpoints) {
-        try {
-          const response = await fetch(url);
-          await delay(2000); // 2 second pause after each API call
-
-          // Check for rate limit error
-          if (response.status === 429) {
-            return { data: [], success: false, rateLimited: true };
-          }
-
-          // Check for restricted location error
-          if (response.status === 451) {
-            continue; // Try next endpoint
-          }
-
-          const data = await response.json();
-
-          if (Array.isArray(data)) {
-            console.log(`Got ${data.length} candles for ${sym}-${timeframe}`);
-            return { data, success: true };
-          }
-        } catch (err) {
-          console.log(`Error fetching from ${url}: ${err.message}`);
-          await delay(2000); // 2 second pause after failed attempt
-          continue;
+        if (response.status === 429) {
+          return { data: [], success: false, rateLimited: true };
         }
+
+        if (response.status === 451) {
+          return { data: [], success: false, rateLimited: false };
+        }
+
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          console.log(`Got ${data.length} candles for ${sym}-${timeframe}`);
+          return { data, success: true };
+        }
+      } catch (err) {
+        console.log(`Error fetching from ${endpoint}: ${err.message}`);
+        await delay(2000);
       }
 
       return { data: [], success: false, rateLimited: false };
     };
 
-    // Fetch klines with retry logic and 429 handling
-    const fetchKlinesWithRetry = async (sym, timeframe, retries = 2) => {
+    const fetchKlinesWithRetry = async (sym, timeframe, endpoints, retries = 2) => {
       for (let attempt = 1; attempt <= retries; attempt++) {
-        const { data, success, rateLimited } = await fetchKlinesInternal(sym, timeframe);
-        if (success) {
-          return data;
+        for (const endpoint of endpoints) {
+          const { data, success, rateLimited } = await fetchKlines(sym, timeframe, endpoint);
+          if (success) {
+            return data;
+          }
+
+          if (rateLimited) {
+            console.warn(`Rate limited (429) for ${sym}-${timeframe}. Stopping execution.`);
+            throw new Error('RATE_LIMIT_HIT');
+          }
         }
 
         if (attempt < retries) {
-          let backoffMs;
-          if (rateLimited) {
-            // Aggressive backoff for rate limiting - exit on first 429
-            console.warn(`Rate limited (429) for ${sym}-${timeframe}. Stopping execution to preserve API quota.`);
-            throw new Error('RATE_LIMIT_HIT');
-          } else {
-            backoffMs = Math.pow(2, attempt - 1) * 5000; // 5s, 10s exponential backoff
-            console.warn(`Attempt ${attempt}/${retries} for ${sym}-${timeframe} failed. Cooling off for ${backoffMs}ms before retry...`);
-            await delay(backoffMs);
-          }
+          const backoffMs = Math.pow(2, attempt - 1) * 5000;
+          console.warn(`Attempt ${attempt}/${retries} for ${sym}-${timeframe} failed. Cooling off for ${backoffMs}ms`);
+          await delay(backoffMs);
         }
       }
 
-      console.error(`Failed to fetch klines for ${sym}-${timeframe} after ${retries} attempts`);
       return [];
     };
 
-    // Process batches with cooldown between each
-    for (let batchIndex = 0; batchIndex < numBatches; batchIndex++) {
-      if (rateLimitHit) break;
+    // Process Binance data
+    console.log(`\n=== Processing Binance Symbols ===`);
+    let binanceTotalInserted = 0;
+    let binanceRateLimitHit = false;
+
+    const binanceSymbols = binanceAssets.map(a => a.symbol);
+    const binanceNumBatches = Math.ceil(binanceSymbols.length / batchSize);
+
+    for (let batchIndex = 0; batchIndex < binanceNumBatches; batchIndex++) {
+      if (binanceRateLimitHit) break;
 
       const startIdx = batchIndex * batchSize;
-      const endIdx = Math.min(startIdx + batchSize, allSymbols.length);
-      const symbolsInBatch = allSymbols.slice(startIdx, endIdx);
+      const endIdx = Math.min(startIdx + batchSize, binanceSymbols.length);
+      const symbolsInBatch = binanceSymbols.slice(startIdx, endIdx);
 
-      console.log(`\n=== Processing Batch ${batchIndex + 1}/${numBatches} (symbols ${startIdx + 1}-${endIdx}) ===`);
+      console.log(`Batch ${batchIndex + 1}/${binanceNumBatches} (symbols ${startIdx + 1}-${endIdx})`);
 
-      // Process each symbol in the batch
       for (let i = 0; i < symbolsInBatch.length; i++) {
-        if (rateLimitHit) break;
+        if (binanceRateLimitHit) break;
 
         const symbol = symbolsInBatch[i];
         const candlesForSymbol = [];
 
         try {
           for (const timeframe of timeframes) {
-            const data = await fetchKlinesWithRetry(symbol, timeframe);
+            const binanceEndpoints = [
+              `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`,
+              `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`
+            ];
+
+            const data = await fetchKlinesWithRetry(symbol, timeframe, binanceEndpoints);
 
             if (Array.isArray(data) && data.length > 0) {
-              // Delete existing data for this symbol/timeframe in batches
-              const existingData = await base44.asServiceRole.entities.PoiData.filter({ symbol, timeframe });
+              const existingData = await base44.asServiceRole.entities.PoiDataBinance.filter({ symbol, timeframe });
               for (let j = 0; j < existingData.length; j += 50) {
                 const batch = existingData.slice(j, j + 50);
                 for (const record of batch) {
-                  await base44.asServiceRole.entities.PoiData.delete(record.id);
+                  await base44.asServiceRole.entities.PoiDataBinance.delete(record.id);
                 }
                 if (j + 50 < existingData.length) {
-                  await delay(100); // Delay between delete batches
+                  await delay(100);
                 }
               }
 
-              // Transform Binance kline response to our schema
               const candles = data.map(kline => ({
                 symbol,
                 timeframe,
@@ -144,85 +135,175 @@ Deno.serve(async (req) => {
                 takerBuyBaseAssetVolume: parseFloat(kline[9]),
                 takerBuyQuoteAssetVolume: parseFloat(kline[10])
               }));
-              
+
               candlesForSymbol.push(...candles);
             }
 
-            // Delay between timeframe requests
             if (timeframes.indexOf(timeframe) < timeframes.length - 1) {
               await delay(1500);
             }
           }
 
-          // Bulk insert candles for this symbol in smaller batches
           if (candlesForSymbol.length > 0) {
             const insertBatchSize = 100;
             for (let j = 0; j < candlesForSymbol.length; j += insertBatchSize) {
               const batch = candlesForSymbol.slice(j, j + insertBatchSize);
               try {
-                const result = await base44.asServiceRole.entities.PoiData.bulkCreate(batch);
-                totalInserted += result?.length || batch.length;
+                const result = await base44.asServiceRole.entities.PoiDataBinance.bulkCreate(batch);
+                binanceTotalInserted += result?.length || batch.length;
                 console.log(`Inserted ${batch.length} candles for ${symbol}`);
               } catch (err) {
                 console.error(`BulkCreate error for ${symbol}: ${err.message}`);
               }
-              
+
               if (j + insertBatchSize < candlesForSymbol.length) {
                 await delay(200);
               }
             }
           }
 
-          // Delay between symbols within batch to avoid rate limiting
           if (i < symbolsInBatch.length - 1) {
             await delay(3000);
           }
         } catch (err) {
           if (err.message === 'RATE_LIMIT_HIT') {
-            console.error(`Rate limit hit while processing ${symbol}. Stopping execution.`);
-            rateLimitHit = true;
+            console.error(`Rate limit hit while processing ${symbol}.`);
+            binanceRateLimitHit = true;
             break;
           }
           console.error(`Error processing ${symbol}: ${err.message}`);
         }
       }
 
-      // Cooldown between batches (except after the last batch)
-      if (batchIndex < numBatches - 1 && !rateLimitHit) {
-        console.log(`Batch ${batchIndex + 1} complete. Cooling down for 1 minute before next batch...`);
+      if (batchIndex < binanceNumBatches - 1 && !binanceRateLimitHit) {
+        console.log(`Cooling down for 1 minute before next batch...`);
         await delay(cooldownMs);
       }
     }
 
-    // Sort all PoiData by timestamp (earliest to oldest)
-    console.log('\nSorting all PoiData records by timestamp...');
-    try {
-      const allPoiDataFinal = await base44.asServiceRole.entities.PoiData.list();
-      if (allPoiDataFinal.length > 0) {
-        const sorted = allPoiDataFinal.sort((a, b) => a.timestamp - b.timestamp);
-        console.log(`Sorted ${sorted.length} PoiData records from earliest to oldest`);
+    // Process Binance US data
+    console.log(`\n=== Processing Binance US Symbols ===`);
+    let binanceUSTotalInserted = 0;
+    let binanceUSRateLimitHit = false;
+
+    const binanceUSSymbols = binanceUSAssets.map(a => a.symbol);
+    const binanceUSNumBatches = Math.ceil(binanceUSSymbols.length / batchSize);
+
+    for (let batchIndex = 0; batchIndex < binanceUSNumBatches; batchIndex++) {
+      if (binanceUSRateLimitHit) break;
+
+      const startIdx = batchIndex * batchSize;
+      const endIdx = Math.min(startIdx + batchSize, binanceUSSymbols.length);
+      const symbolsInBatch = binanceUSSymbols.slice(startIdx, endIdx);
+
+      console.log(`Batch ${batchIndex + 1}/${binanceUSNumBatches} (symbols ${startIdx + 1}-${endIdx})`);
+
+      for (let i = 0; i < symbolsInBatch.length; i++) {
+        if (binanceUSRateLimitHit) break;
+
+        const symbol = symbolsInBatch[i];
+        const candlesForSymbol = [];
+
+        try {
+          for (const timeframe of timeframes) {
+            const binanceUSEndpoints = [
+              `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`
+            ];
+
+            const data = await fetchKlinesWithRetry(symbol, timeframe, binanceUSEndpoints);
+
+            if (Array.isArray(data) && data.length > 0) {
+              const existingData = await base44.asServiceRole.entities.PoiDataBinanceUS.filter({ symbol, timeframe });
+              for (let j = 0; j < existingData.length; j += 50) {
+                const batch = existingData.slice(j, j + 50);
+                for (const record of batch) {
+                  await base44.asServiceRole.entities.PoiDataBinanceUS.delete(record.id);
+                }
+                if (j + 50 < existingData.length) {
+                  await delay(100);
+                }
+              }
+
+              const candles = data.map(kline => ({
+                symbol,
+                timeframe,
+                timestamp: kline[0],
+                open: parseFloat(kline[1]),
+                high: parseFloat(kline[2]),
+                low: parseFloat(kline[3]),
+                close: parseFloat(kline[4]),
+                volume: parseFloat(kline[7]),
+                quoteAssetVolume: parseFloat(kline[8]),
+                numberOfTrades: parseInt(kline[8]),
+                takerBuyBaseAssetVolume: parseFloat(kline[9]),
+                takerBuyQuoteAssetVolume: parseFloat(kline[10])
+              }));
+
+              candlesForSymbol.push(...candles);
+            }
+
+            if (timeframes.indexOf(timeframe) < timeframes.length - 1) {
+              await delay(1500);
+            }
+          }
+
+          if (candlesForSymbol.length > 0) {
+            const insertBatchSize = 100;
+            for (let j = 0; j < candlesForSymbol.length; j += insertBatchSize) {
+              const batch = candlesForSymbol.slice(j, j + insertBatchSize);
+              try {
+                const result = await base44.asServiceRole.entities.PoiDataBinanceUS.bulkCreate(batch);
+                binanceUSTotalInserted += result?.length || batch.length;
+                console.log(`Inserted ${batch.length} candles for ${symbol}`);
+              } catch (err) {
+                console.error(`BulkCreate error for ${symbol}: ${err.message}`);
+              }
+
+              if (j + insertBatchSize < candlesForSymbol.length) {
+                await delay(200);
+              }
+            }
+          }
+
+          if (i < symbolsInBatch.length - 1) {
+            await delay(3000);
+          }
+        } catch (err) {
+          if (err.message === 'RATE_LIMIT_HIT') {
+            console.error(`Rate limit hit while processing ${symbol}.`);
+            binanceUSRateLimitHit = true;
+            break;
+          }
+          console.error(`Error processing ${symbol}: ${err.message}`);
+        }
       }
-    } catch (err) {
-      console.error(`Error sorting PoiData: ${err.message}`);
+
+      if (batchIndex < binanceUSNumBatches - 1 && !binanceUSRateLimitHit) {
+        console.log(`Cooling down for 1 minute before next batch...`);
+        await delay(cooldownMs);
+      }
     }
 
     return Response.json({
-      success: !rateLimitHit,
-      totalSymbols: allSymbols.length,
-      processedSymbols: allSymbols.length,
-      totalCandles: totalInserted,
-      rateLimitHit: rateLimitHit,
-      message: rateLimitHit 
-        ? `Rate limit hit during processing. Check logs for details.`
-        : `Successfully updated POI data for all ${allSymbols.length} symbols (${totalInserted} candles inserted)`
+      success: !binanceRateLimitHit && !binanceUSRateLimitHit,
+      binance: {
+        totalSymbols: binanceSymbols.length,
+        totalCandles: binanceTotalInserted,
+        rateLimitHit: binanceRateLimitHit
+      },
+      binanceUS: {
+        totalSymbols: binanceUSSymbols.length,
+        totalCandles: binanceUSTotalInserted,
+        rateLimitHit: binanceUSRateLimitHit
+      },
+      message: `Updated POI data: Binance (${binanceTotalInserted} candles), Binance US (${binanceUSTotalInserted} candles)`
     });
   } catch (error) {
     console.error(`Fatal error in populatePoiData: ${error.message}`);
-    // Return 200 instead of 500 to prevent scheduler from retrying immediately
-    return Response.json({ 
+    return Response.json({
       success: false,
       error: error.message,
-      message: 'Error during execution. Will retry in next scheduled run.'
+      message: 'Error during execution.'
     }, { status: 200 });
   }
 });
