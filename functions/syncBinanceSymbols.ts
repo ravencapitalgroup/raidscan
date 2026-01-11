@@ -41,10 +41,20 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Fetch from both Futures and Spot
-    const futuresData = await fetchViaProxy(base44, '/fapi/v1/exchangeInfo', {}).catch(() => ({ symbols: [] }));
-    const spotData = await fetchViaProxy(base44, '/api/v3/exchangeInfo', {}).catch(() => ({ symbols: [] }));
-    const spotUSData = await fetchViaProxy(base44, '/api/v3/exchangeInfo', {}).catch(() => ({ symbols: [] }));
+    // Fetch from both Futures and Spot (via proxy for non-US)
+    const futuresData = await fetchViaProxy(base44, '/fapi/v1/exchangeInfo', {}, 'https://fapi.binance.com').catch(() => ({ symbols: [] }));
+    const spotData = await fetchViaProxy(base44, '/api/v3/exchangeInfo', {}, 'https://api.binance.com').catch(() => ({ symbols: [] }));
+    
+    // Fetch US spot data directly (no proxy needed)
+    let spotUSData = { symbols: [] };
+    try {
+      const usResponse = await fetch('https://api.binance.us/api/v3/exchangeInfo');
+      if (usResponse.ok) {
+        spotUSData = await usResponse.json();
+      }
+    } catch (err) {
+      console.error('Failed to fetch from Binance.US:', err.message);
+    }
     
     // Build symbol map tracking all sources
     const symbolMap = new Map();
