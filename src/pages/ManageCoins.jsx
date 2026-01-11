@@ -61,21 +61,38 @@ export default function ManageCoins() {
     },
   });
 
+  const updateAssetWithRetry = async (assetId, isActive, maxRetries = 3) => {
+    let lastError;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await base44.entities.WatchlistAsset.update(assetId, { is_active: isActive });
+        return;
+      } catch (err) {
+        lastError = err;
+        const status = err.response?.status;
+        
+        // If 429 (rate limit), use exponential backoff
+        if (status === 429) {
+          const delayMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        } else if (attempt < maxRetries) {
+          // Other errors: shorter backoff
+          await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+        }
+      }
+    }
+    throw lastError;
+  };
+
   const toggleAllAssets = useMutation({
     mutationFn: async () => {
       const shouldActivate = activeCount < assets.length / 2;
-      const batchSize = 10;
+      const delayBetweenUpdates = 200; // 200ms between each asset
       
-      for (let i = 0; i < assets.length; i += batchSize) {
-        const batch = assets.slice(i, i + batchSize);
-        const updates = batch.map(asset =>
-          base44.entities.WatchlistAsset.update(asset.id, { is_active: shouldActivate })
-        );
-        await Promise.all(updates);
-        
-        if (i + batchSize < assets.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
+      for (const asset of assets) {
+        await updateAssetWithRetry(asset.id, shouldActivate);
+        // Delay before next update to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, delayBetweenUpdates));
       }
     },
     onSuccess: () => {
