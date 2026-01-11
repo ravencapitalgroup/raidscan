@@ -78,7 +78,6 @@ export default function ManageCoins() {
     return acc;
   }, {});
 
-  const categoryOrder = ['Layer 1', 'Layer 2', 'DeFi', 'AI', 'Gaming', 'Meme', 'Infrastructure', 'Other'];
   const sortedGroupedAssets = Object.entries(groupedAssets).sort(([catA], [catB]) => {
     return categoryOrder.indexOf(catA) - categoryOrder.indexOf(catB);
   });
