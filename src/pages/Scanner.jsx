@@ -82,15 +82,7 @@ const fetchPrices = async (symbols) => {
     }, {});
   } catch (error) {
     console.error('Error fetching prices:', error);
-    // Return mock data as fallback
-    return symbols.reduce((acc, symbol) => {
-      const basePrice = Math.random() * 1000 + 10;
-      acc[symbol] = {
-        price: basePrice,
-        change24h: (Math.random() - 0.5) * 20
-      };
-      return acc;
-    }, {});
+    throw error; // Don't return random data, let the error be visible
   }
 };
 
@@ -169,10 +161,12 @@ export default function Scanner() {
     
     setAssetData(newAssetData);
     setIsScanning(false);
-  }, [symbols]);
+  }, []);
 
   // Initial scan and periodic refresh
   useEffect(() => {
+    if (symbols.length === 0) return;
+    
     scanMarkets();
     setNextRefresh(Date.now() + refreshInterval);
     
@@ -182,7 +176,7 @@ export default function Scanner() {
     }, refreshInterval);
     
     return () => clearInterval(interval);
-  }, [scanMarkets, refreshInterval]);
+  }, [refreshInterval]);
   
   // Update countdown timer
   useEffect(() => {
