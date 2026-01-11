@@ -111,10 +111,9 @@ Deno.serve(async (req) => {
         symbol: s.symbol,
         source: 'binance',
         is_active: true,
-        category: 'Other',
+        category: types[s.symbol.replace('USDT', '')] || 'Other',
         is_futures: s.is_futures,
-        is_spot: s.is_spot,
-        type: types[s.symbol.replace('USDT', '')] || 'Other'
+        is_spot: s.is_spot
       }));
 
       const batchSize = 100;

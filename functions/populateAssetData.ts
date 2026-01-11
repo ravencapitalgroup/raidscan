@@ -11,19 +11,19 @@ Deno.serve(async (req) => {
 
     console.log('Starting asset data population...');
 
-    // Fetch all assets with missing type (null, undefined, or 'Other')
+    // Fetch all assets with missing category (null, undefined, or 'Other')
     const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
-    const assetsNeedingType = allAssets.filter(a => !a.type || a.type === 'Other' || a.type === '');
+    const assetsNeedingCategory = allAssets.filter(a => !a.category || a.category === 'Other' || a.category === '');
 
-    console.log(`Found ${assetsNeedingType.length} assets needing type`);
+    console.log(`Found ${assetsNeedingCategory.length} assets needing category`);
 
-    let typesPopulated = 0;
+    let categoriesPopulated = 0;
 
-    // Populate types in batches
-    if (assetsNeedingType.length > 0) {
+    // Populate categories in batches
+    if (assetsNeedingCategory.length > 0) {
       const batchSize = 50;
-      for (let i = 0; i < assetsNeedingType.length; i += batchSize) {
-        const batch = assetsNeedingType.slice(i, i + batchSize);
+      for (let i = 0; i < assetsNeedingCategory.length; i += batchSize) {
+        const batch = assetsNeedingCategory.slice(i, i + batchSize);
         const symbolNames = batch.map(a => a.symbol.replace('USDT', ''));
 
         try {
@@ -45,16 +45,16 @@ Symbols: ${symbolNames.join(', ')}`,
 
           for (const asset of batch) {
             const cleanSymbol = asset.symbol.replace('USDT', '');
-            const type = result.categories?.[cleanSymbol] || 'Other';
+            const category = result.categories?.[cleanSymbol] || 'Other';
             try {
-              await base44.asServiceRole.entities.WatchlistAsset.update(asset.id, { type });
-              typesPopulated++;
+              await base44.asServiceRole.entities.WatchlistAsset.update(asset.id, { category });
+              categoriesPopulated++;
             } catch (updateErr) {
               console.warn(`Failed to update ${asset.symbol}: ${updateErr.message}`);
             }
           }
 
-          console.log(`Populated types for ${Math.min(batchSize, assetsNeedingType.length - i)} assets`);
+          console.log(`Populated categories for ${Math.min(batchSize, assetsNeedingCategory.length - i)} assets`);
           await new Promise(r => setTimeout(r, 1000));
         } catch (err) {
           console.error(`Error populating types in batch: ${err.message}`);
@@ -64,8 +64,8 @@ Symbols: ${symbolNames.join(', ')}`,
 
     return Response.json({
       success: true,
-      typesPopulated,
-      message: `Populated ${typesPopulated} asset types`
+      categoriesPopulated,
+      message: `Populated ${categoriesPopulated} asset categories`
     });
   } catch (error) {
     console.error('populateAssetData error:', error);
