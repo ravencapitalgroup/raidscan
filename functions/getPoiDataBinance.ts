@@ -11,11 +11,11 @@ Deno.serve(async (req) => {
 
     const limit = 10;
     const batchSize = 20;
-    const cooldownMs = 60000;
+    const cooldownMs = 30000;
 
     console.log(`Starting POI data update for Binance`);
 
-    const binanceAssets = await base44.asServiceRole.entities.WatchlistAssetBinance.list();
+    const binanceAssets = await base44.asServiceRole.entities.WatchlistAsset.filter({ source: 'binance' });
     console.log(`Fetched ${binanceAssets.length} Binance symbols`);
 
     const timeframes = ['1w', '1M'];
