@@ -190,11 +190,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Update existing symbols with new futures/spot flags
+    if (symbolsToUpdate.length > 0) {
+      for (const update of symbolsToUpdate) {
+        await base44.asServiceRole.entities.WatchlistAsset.update(update.id, {
+          is_futures: update.is_futures,
+          is_spot: update.is_spot
+        });
+      }
+      console.log(`Updated ${symbolsToUpdate.length} symbols with futures/spot flags`);
+    }
+
     return Response.json({
       success: true,
       totalSymbols: symbols.length,
       newSymbolsAdded: newSymbols.length,
-      message: `Synced ${symbols.length} symbols, added ${newSymbols.length} new ones with historic data`
+      symbolsUpdated: symbolsToUpdate.length,
+      message: `Synced ${symbols.length} symbols, added ${newSymbols.length} new ones with historic data, updated ${symbolsToUpdate.length}`
     });
   } catch (error) {
     console.error('Sync error:', error);
