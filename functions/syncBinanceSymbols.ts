@@ -41,18 +41,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Fetch from both Futures and Spot
-    const { data: futuresData, endpoint: futuresEndpoint } = await fetchWithFallback([
-      'https://fapi.binance.com/fapi/v1/exchangeInfo'
-    ]).catch(() => ({ data: { symbols: [] }, endpoint: '' }));
-
-    const { data: spotData, endpoint: spotEndpoint } = await fetchWithFallback([
-      'https://api.binance.com/api/v3/exchangeInfo',
-      'https://api.binance.us/api/v3/exchangeInfo'
-    ]);
-    
-    const spotSource = spotEndpoint.includes('binance.us') ? 'binanceus' : 'binance';
-    const futuresSource = futuresEndpoint.includes('binance.us') ? 'binanceus' : 'binance';
+    // Fetch from Spot via proxy
+    const spotData = await fetchViaProxy(base44, '/api/v3/exchangeInfo', {});
     
     // Combine symbols from both, tracking which are futures/spot
     const symbolMap = new Map();
