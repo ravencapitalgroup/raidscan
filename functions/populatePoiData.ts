@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       const candlesForSymbol = [];
 
       for (const timeframe of timeframes) {
-        const data = await fetchKlines(symbol, timeframe);
+        const data = await fetchKlinesWithRetry(symbol, timeframe);
 
         if (Array.isArray(data) && data.length > 0) {
           // Delete existing data for this symbol/timeframe in batches
