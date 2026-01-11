@@ -24,31 +24,40 @@ Deno.serve(async (req) => {
 
       for (const url of endpoints) {
         try {
+          console.log(`Fetching ticker for ${symbol} from: ${url}`);
           const response = await fetch(url);
+          console.log(`Response status: ${response.status}`);
           const data = await response.json();
+          console.log(`Data received:`, JSON.stringify(data).slice(0, 200));
 
           // Check for restricted location error
           if (data.code === -1022 || response.status === 451) {
+            console.log(`Endpoint restricted or error code. Trying fallback...`);
             continue; // Try next endpoint
           }
 
           if (data.code) {
+            console.log(`API error: ${data.msg}`);
             return { symbol, error: data.msg || 'Failed to fetch price' };
           }
 
-          return {
+          const result = {
             symbol: data.symbol,
             lastPrice: parseFloat(data.lastPrice),
             priceChangePercent: parseFloat(data.priceChangePercent),
             volume: parseFloat(data.volume),
             quoteAssetVolume: parseFloat(data.quoteAssetVolume)
           };
+          console.log(`Successfully fetched ${symbol}:`, JSON.stringify(result));
+          return result;
         } catch (err) {
+          console.log(`Error fetching from ${url}: ${err.message}`);
           // Continue to next endpoint on error
           continue;
         }
       }
 
+      console.log(`Failed to fetch ${symbol} from all endpoints`);
       return { symbol, error: 'Failed to fetch from all endpoints' };
     };
 
