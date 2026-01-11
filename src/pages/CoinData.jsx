@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
-import { useScannerData } from '@/components/scanner/ScannerContext';
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, TrendingUp, TrendingDown, Activity } from 'lucide-react';
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import ScannerHeader from '@/components/scanner/ScannerHeader';
+      import { useScannerData } from '@/components/scanner/ScannerContext';
+      import { Input } from "@/components/ui/input";
+      import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+      import { Search, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+      import { cn } from "@/lib/utils";
+      import { Badge } from "@/components/ui/badge";
+      import ScannerHeader from '@/components/scanner/ScannerHeader';
 
-export default function CoinData() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const { assetData, symbols, isScanning, refreshInterval, setRefreshInterval, nextRefresh, scanMarkets } = useScannerData();
+      const normalizeSymbol = (symbol) => {
+        if (!symbol.endsWith('USDT')) {
+          return symbol + 'USDT';
+        }
+        return symbol;
+      };
+
+      export default function CoinData() {
+        const [searchQuery, setSearchQuery] = useState('');
+        const { assetData, symbols, isScanning, refreshInterval, setRefreshInterval, nextRefresh, scanMarkets } = useScannerData();
 
   const filteredSymbols = symbols.filter(symbol => 
     symbol.toLowerCase().includes(searchQuery.toLowerCase())
