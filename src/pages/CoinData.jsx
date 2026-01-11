@@ -84,10 +84,10 @@ export default function CoinData() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs bg-gradient-to-br from-slate-700 to-slate-800 text-slate-300">
-                          {symbol.replace('USDT', '').slice(0, 3)}
+                          {symbol.slice(0, 3)}
                         </div>
                         <span className="text-white font-semibold">
-                          {symbol.replace('USDT', '')}
+                          {symbol}
                         </span>
                       </div>
                     </TableCell>
