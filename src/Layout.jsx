@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Radar, Settings } from 'lucide-react';
+import { Radar, Settings, Table } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { ScannerProvider } from '@/components/scanner/ScannerContext';
 
 export default function Layout({ children, currentPageName }) {
   return (
-    <div className="min-h-screen bg-slate-950">
+    <ScannerProvider>
+      <div className="min-h-screen bg-slate-950">
       <style>{`
         :root {
           --background: 222.2 84% 4.9%;
@@ -76,6 +78,19 @@ export default function Layout({ children, currentPageName }) {
               </Link>
               
               <Link 
+                to={createPageUrl('CoinData')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg transition-all",
+                  currentPageName === 'CoinData'
+                    ? "bg-emerald-500/10 text-emerald-400"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                )}
+              >
+                <Table className="w-4 h-4" />
+                <span className="font-medium text-sm">Coin Data</span>
+              </Link>
+
+              <Link 
                 to={createPageUrl('ManageCoins')}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg transition-all",
@@ -87,12 +102,13 @@ export default function Layout({ children, currentPageName }) {
                 <Settings className="w-4 h-4" />
                 <span className="font-medium text-sm">Manage Coins</span>
               </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-      
-      {children}
-    </div>
-  );
-}
+              </div>
+              </div>
+              </div>
+              </nav>
+
+              {children}
+              </div>
+              </ScannerProvider>
+              );
+              }

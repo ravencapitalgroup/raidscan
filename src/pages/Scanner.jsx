@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useScannerData } from '@/components/scanner/ScannerContext';
 import ScannerHeader from '@/components/scanner/ScannerHeader';
 import AssetCard from '@/components/scanner/AssetCard';
 import RaidAlertFeed from '@/components/scanner/RaidAlertFeed';
@@ -9,112 +9,23 @@ import SymbolManager from '@/components/scanner/SymbolManager';
 import { Input } from "@/components/ui/input";
 import { Search, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-const REFRESH_INTERVALS = [
-  { label: '5 Minutes', value: 300000, shortLabel: '5m' },
-  { label: '30 Minutes', value: 1800000, shortLabel: '30m' },
-  { label: '1 Hour', value: 3600000, shortLabel: '1h' },
-];
-
-// Simulated POI calculation (in production, this would fetch real data)
-const calculatePOIs = (symbol, currentPrice) => {
-  // Simulate POI levels based on current price with some variance
-  const variance = currentPrice * 0.05;
-  const weeklyVariance = currentPrice * 0.08;
-  const quarterlyVariance = currentPrice * 0.15;
-  
-  return {
-    PWH: { 
-      price: currentPrice + weeklyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.85,
-      isActive: Math.random() > 0.9
-    },
-    PWL: { 
-      price: currentPrice - weeklyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.85,
-      isActive: Math.random() > 0.9
-    },
-    PQH: { 
-      price: currentPrice + quarterlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.92,
-      isActive: Math.random() > 0.95
-    },
-    PQL: { 
-      price: currentPrice - quarterlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.92,
-      isActive: Math.random() > 0.95
-    },
-  };
-};
-
-// Fetch current perpetual futures prices from Binance using AI
-const fetchPrices = async (symbols) => {
-  try {
-    const symbolList = symbols.map(s => s.replace('USDT', '')).join(', ');
-    
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Get the current live Binance PERPETUAL FUTURES prices (NOT spot prices) and 24h price change percentages for these trading pairs: ${symbolList}/USDT. Make sure to use Binance Futures/Perpetuals data. Return ONLY the data, no explanations.`,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          prices: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                symbol: { type: "string", description: "Symbol with USDT suffix, e.g. BTCUSDT" },
-                price: { type: "number" },
-                change24h: { type: "number", description: "24h percentage change" }
-              }
-            }
-          }
-        }
-      }
-    });
-    
-    return result.prices.reduce((acc, item) => {
-      acc[item.symbol] = {
-        price: item.price,
-        change24h: item.change24h
-      };
-      return acc;
-    }, {});
-  } catch (error) {
-    console.error('Error fetching prices:', error);
-    throw error;
-  }
-};
+import { base44 } from '@/api/base44Client';
 
 export default function Scanner() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [isScanning, setIsScanning] = useState(false);
-  const [assetData, setAssetData] = useState({});
-  const [refreshInterval, setRefreshInterval] = useState(300000); // Default 5 minutes
-  const [nextRefresh, setNextRefresh] = useState(null);
-  const [error, setError] = useState(null);
   const queryClient = useQueryClient();
-
-  // Fetch active symbols from database
-  const { data: rawWatchlistAssets = [] } = useQuery({
-    queryKey: ['watchlistAssets'],
-    queryFn: () => base44.entities.WatchlistAsset.filter({ is_active: true }),
-  });
-
-  // Remove duplicates - keep only the most recently created one for each symbol
-  const watchlistAssets = rawWatchlistAssets.reduce((acc, asset) => {
-    const existing = acc.find(a => a.symbol === asset.symbol);
-    if (!existing) {
-      acc.push(asset);
-    } else if (new Date(asset.created_date) > new Date(existing.created_date)) {
-      const index = acc.indexOf(existing);
-      acc[index] = asset;
-    }
-    return acc;
-  }, []);
-
-  const symbols = watchlistAssets.map(a => a.symbol);
+  
+  const { 
+    isScanning, 
+    assetData, 
+    symbols, 
+    refreshInterval, 
+    setRefreshInterval, 
+    nextRefresh, 
+    error, 
+    scanMarkets 
+  } = useScannerData();
 
   // Fetch saved alerts
   const { data: alerts = [] } = useQuery({
@@ -122,100 +33,11 @@ export default function Scanner() {
     queryFn: () => base44.entities.RaidAlert.list('-created_date', 50),
   });
 
-  // Mutation for creating alerts
-  const createAlert = useMutation({
-    mutationFn: (alertData) => base44.entities.RaidAlert.create(alertData),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['raidAlerts'] }),
-  });
-
   // Mutation for dismissing alerts
   const dismissAlert = useMutation({
     mutationFn: (id) => base44.entities.RaidAlert.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['raidAlerts'] }),
   });
-
-  // Scan for prices and POIs
-  const scanMarkets = async () => {
-    if (symbols.length === 0) return;
-    
-    setIsScanning(true);
-    setError(null);
-    
-    try {
-      const prices = await fetchPrices(symbols);
-      
-      const newAssetData = {};
-      const newRaids = [];
-      
-      for (const symbol of symbols) {
-        if (prices[symbol]) {
-          const pois = calculatePOIs(symbol, prices[symbol].price);
-          
-          // Check for active raids and create alerts
-          Object.entries(pois).forEach(([poiType, data]) => {
-            if (data.isActive) {
-              const isHighRaid = poiType.includes('H');
-              newRaids.push({
-                symbol,
-                poi_type: poiType,
-                raid_direction: isHighRaid ? 'bearish' : 'bullish',
-                poi_price: data.price,
-                raid_price: prices[symbol].price,
-                timestamp: new Date().toLocaleTimeString()
-              });
-            }
-          });
-          
-          newAssetData[symbol] = {
-            ...prices[symbol],
-            pois,
-            activeRaids: newRaids.filter(r => r.symbol === symbol)
-          };
-        }
-      }
-      
-      setAssetData(newAssetData);
-    } catch (err) {
-      console.error('Scan error:', err);
-      const errorMessage = err.message || err.toString();
-      
-      if (errorMessage.includes('Rate limit')) {
-        setError('Rate limit reached. Please wait before refreshing again.');
-      } else if (errorMessage.includes('502')) {
-        setError('Server temporarily unavailable. Will retry automatically.');
-      } else {
-        setError('Failed to fetch prices. Will retry automatically.');
-      }
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  // Initial scan and periodic refresh
-  useEffect(() => {
-    if (symbols.length === 0) {
-      setIsScanning(false);
-      return;
-    }
-    
-    scanMarkets();
-    setNextRefresh(Date.now() + refreshInterval);
-    
-    const interval = setInterval(() => {
-      scanMarkets();
-      setNextRefresh(Date.now() + refreshInterval);
-    }, refreshInterval);
-    
-    return () => clearInterval(interval);
-  }, [symbols.join(','), refreshInterval]);
-  
-  // Update countdown timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNextRefresh(prev => prev ? prev : Date.now() + refreshInterval);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [refreshInterval]);
 
   // Filter assets
   const filteredSymbols = symbols.filter(symbol => {
@@ -249,10 +71,7 @@ export default function Scanner() {
           totalAssets={symbols.length}
           activeRaids={totalActiveRaids}
           isScanning={isScanning}
-          onRefresh={() => {
-            scanMarkets();
-            setNextRefresh(Date.now() + refreshInterval);
-          }}
+          onRefresh={scanMarkets}
           refreshInterval={refreshInterval}
           onRefreshIntervalChange={setRefreshInterval}
           nextRefresh={nextRefresh}
