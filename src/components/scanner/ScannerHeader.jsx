@@ -1,5 +1,5 @@
 import React from 'react';
-import { Radar, Zap, Settings, RefreshCw } from 'lucide-react';
+import { Radar, Zap, RefreshCw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

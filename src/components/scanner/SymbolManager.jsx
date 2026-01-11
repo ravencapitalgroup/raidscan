@@ -1,9 +1,6 @@
 import React, { useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from "@/components/ui/button";
-import { RefreshCcw, CheckCircle } from 'lucide-react';
-import { cn } from "@/lib/utils";
 
 export default function SymbolManager({ onUpdate }) {
   const queryClient = useQueryClient();
@@ -26,17 +23,23 @@ export default function SymbolManager({ onUpdate }) {
       });
       
       const newSymbols = result.symbols || [];
-      
+      const defaultActiveSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
+      const updates = [];
+
       // Get existing symbols from database
-      const existing = await base44.entities.WatchlistAsset.list();
-      const existingSymbols = existing.map(e => e.symbol);
-      
-      // Categorize and add new symbols
-      const toAdd = newSymbols.filter(s => !existingSymbols.includes(s));
-      if (toAdd.length > 0) {
+      const existingWatchlistAssets = await base44.entities.WatchlistAsset.list();
+      const existingSymbolsMap = new Map(existingWatchlistAssets.map(e => [e.symbol, e]));
+
+      // Identify symbols to add (new symbols from Binance not in our database)
+      const symbolsToAdd = newSymbols.filter(
+        binanceSymbol => !existingSymbolsMap.has(binanceSymbol)
+      );
+
+      let categorizedCoins = [];
+      if (symbolsToAdd.length > 0) {
         // Get categories for new symbols
-        const categorized = await base44.integrations.Core.InvokeLLM({
-          prompt: `Categorize these crypto coins into: Layer 1, Layer 2, DeFi, AI, Gaming, Meme, Infrastructure, or Other. Return in the exact format: ${toAdd.join(', ')}`,
+        const categorizedResult = await base44.integrations.Core.InvokeLLM({
+          prompt: `Categorize these crypto coins into: Layer 1, Layer 2, DeFi, AI, Gaming, Meme, Infrastructure, or Other. Return in the exact format: ${symbolsToAdd.join(', ')}`,
           add_context_from_internet: true,
           response_json_schema: {
             type: "object",
@@ -54,35 +57,41 @@ export default function SymbolManager({ onUpdate }) {
             }
           }
         });
-        
-        // Only BTC, ETH, and SOL are active by default
-        const defaultActive = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
-        
-        await base44.entities.WatchlistAsset.bulkCreate(
-          toAdd.map(symbol => {
-            const coinInfo = categorized.coins.find(c => c.symbol === symbol);
-            return {
-              symbol: symbol,
-              is_active: defaultActive.includes(symbol),
-              category: coinInfo ? coinInfo.category : 'Other'
-            };
-          })
-        );
+        categorizedCoins = categorizedResult.coins || [];
       }
-      
-      // Mark removed symbols as inactive (don't delete, keep historical data)
-      const toDeactivate = existingSymbols.filter(s => !newSymbols.includes(s));
-      for (const symbol of toDeactivate) {
-        const asset = existing.find(e => e.symbol === symbol);
-        if (asset && asset.is_active) {
-          await base44.entities.WatchlistAsset.update(asset.id, { is_active: false });
+      const categorizedMap = new Map(categorizedCoins.map(c => [c.symbol, c.category]));
+
+      // Prepare create operations for new symbols
+      for (const symbol of symbolsToAdd) {
+        updates.push(base44.entities.WatchlistAsset.create({
+          symbol: symbol,
+          is_active: defaultActiveSymbols.includes(symbol),
+          category: categorizedMap.get(symbol) || 'Other'
+        }));
+      }
+
+      // Prepare update operations for existing symbols - reset to defaults
+      for (const existingAsset of existingWatchlistAssets) {
+        const isStillOnBinance = newSymbols.includes(existingAsset.symbol);
+        let shouldBeActive = false;
+
+        if (isStillOnBinance) {
+          // Reset to default: only BTC, ETH, SOL should be active
+          shouldBeActive = defaultActiveSymbols.includes(existingAsset.symbol);
+        }
+
+        if (existingAsset.is_active !== shouldBeActive) {
+          updates.push(base44.entities.WatchlistAsset.update(existingAsset.id, { is_active: shouldBeActive }));
         }
       }
       
-      return { added: toAdd.length, deactivated: toDeactivate.length, total: newSymbols.length };
+      await Promise.all(updates);
+      
+      return { added: symbolsToAdd.length, updated: updates.length - symbolsToAdd.length, total: newSymbols.length };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
+      queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
       if (onUpdate) onUpdate(data);
     },
   });
@@ -104,33 +113,6 @@ export default function SymbolManager({ onUpdate }) {
     checkAndUpdate();
   }, []);
   
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => {
-        updateSymbols.mutate();
-        localStorage.setItem('symbols_last_update', Date.now().toString());
-      }}
-      disabled={updateSymbols.isPending}
-      className="bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50 hover:text-white"
-    >
-      {updateSymbols.isPending ? (
-        <>
-          <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
-          Updating...
-        </>
-      ) : updateSymbols.isSuccess ? (
-        <>
-          <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
-          Updated
-        </>
-      ) : (
-        <>
-          <RefreshCcw className="w-4 h-4 mr-2" />
-          Update Symbols
-        </>
-      )}
-    </Button>
-  );
+  // Hidden component - only runs background logic
+  return null;
 }

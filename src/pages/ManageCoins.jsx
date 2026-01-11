@@ -43,6 +43,7 @@ export default function ManageCoins() {
 
   const bulkToggle = useMutation({
     mutationFn: async (is_active) => {
+      // Update ALL assets, not just filtered ones
       const updates = assets.map(asset => 
         base44.entities.WatchlistAsset.update(asset.id, { is_active })
       );
