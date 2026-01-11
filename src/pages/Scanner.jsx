@@ -47,42 +47,36 @@ const calculatePOIs = (symbol, currentPrice) => {
   };
 };
 
-// Fetch current perpetual futures prices from Binance using AI
+// Fetch current perpetual futures prices from Binance directly
 const fetchPrices = async (symbols) => {
   try {
-    const symbolList = symbols.map(s => s.replace('USDT', '')).join(', ');
+    // Binance Futures API endpoint (no CORS issues)
+    const url = 'https://fapi.binance.com/fapi/v1/ticker/24hr';
+    const response = await fetch(url);
     
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Get the current live Binance PERPETUAL FUTURES prices (NOT spot prices) and 24h price change percentages for these trading pairs: ${symbolList}/USDT. Make sure to use Binance Futures/Perpetuals data. Return ONLY the data, no explanations.`,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          prices: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                symbol: { type: "string", description: "Symbol with USDT suffix, e.g. BTCUSDT" },
-                price: { type: "number" },
-                change24h: { type: "number", description: "24h percentage change" }
-              }
-            }
-          }
-        }
+    if (!response.ok) {
+      throw new Error(`Binance API error: ${response.status}`);
+    }
+    
+    const allTickers = await response.json();
+    
+    // Filter and format only the symbols we need
+    const priceData = {};
+    symbols.forEach(symbol => {
+      const ticker = allTickers.find(t => t.symbol === symbol);
+      if (ticker) {
+        priceData[symbol] = {
+          price: parseFloat(ticker.lastPrice),
+          change24h: parseFloat(ticker.priceChangePercent)
+        };
       }
     });
     
-    return result.prices.reduce((acc, item) => {
-      acc[item.symbol] = {
-        price: item.price,
-        change24h: item.change24h
-      };
-      return acc;
-    }, {});
+    return priceData;
   } catch (error) {
     console.error('Error fetching prices:', error);
-    throw error; // Don't return random data, let the error be visible
+    // Return empty object instead of throwing to prevent app crash
+    return {};
   }
 };
 
@@ -127,40 +121,45 @@ export default function Scanner() {
     
     setIsScanning(true);
     
-    const prices = await fetchPrices(symbols);
-    
-    const newAssetData = {};
-    const newRaids = [];
-    
-    for (const symbol of symbols) {
-      if (prices[symbol]) {
-        const pois = calculatePOIs(symbol, prices[symbol].price);
-        
-        // Check for active raids and create alerts
-        Object.entries(pois).forEach(([poiType, data]) => {
-          if (data.isActive) {
-            const isHighRaid = poiType.includes('H');
-            newRaids.push({
-              symbol,
-              poi_type: poiType,
-              raid_direction: isHighRaid ? 'bearish' : 'bullish',
-              poi_price: data.price,
-              raid_price: prices[symbol].price,
-              timestamp: new Date().toLocaleTimeString()
-            });
-          }
-        });
-        
-        newAssetData[symbol] = {
-          ...prices[symbol],
-          pois,
-          activeRaids: newRaids.filter(r => r.symbol === symbol)
-        };
+    try {
+      const prices = await fetchPrices(symbols);
+      
+      const newAssetData = {};
+      const newRaids = [];
+      
+      for (const symbol of symbols) {
+        if (prices[symbol]) {
+          const pois = calculatePOIs(symbol, prices[symbol].price);
+          
+          // Check for active raids and create alerts
+          Object.entries(pois).forEach(([poiType, data]) => {
+            if (data.isActive) {
+              const isHighRaid = poiType.includes('H');
+              newRaids.push({
+                symbol,
+                poi_type: poiType,
+                raid_direction: isHighRaid ? 'bearish' : 'bullish',
+                poi_price: data.price,
+                raid_price: prices[symbol].price,
+                timestamp: new Date().toLocaleTimeString()
+              });
+            }
+          });
+          
+          newAssetData[symbol] = {
+            ...prices[symbol],
+            pois,
+            activeRaids: newRaids.filter(r => r.symbol === symbol)
+          };
+        }
       }
+      
+      setAssetData(newAssetData);
+    } catch (error) {
+      console.error('Scan error:', error);
+    } finally {
+      setIsScanning(false);
     }
-    
-    setAssetData(newAssetData);
-    setIsScanning(false);
   }, [symbols]);
 
   // Initial scan and periodic refresh
