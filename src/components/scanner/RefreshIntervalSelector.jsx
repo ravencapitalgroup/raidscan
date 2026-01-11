@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, Zap } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
@@ -10,7 +10,16 @@ const INTERVALS = [
 ];
 
 export default function RefreshIntervalSelector({ value, onChange, nextRefresh }) {
-  const timeUntilRefresh = nextRefresh ? Math.max(0, Math.ceil((nextRefresh - Date.now()) / 1000)) : 0;
+  const [now, setNow] = useState(Date.now());
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  
+  const timeUntilRefresh = nextRefresh ? Math.max(0, Math.ceil((nextRefresh - now) / 1000)) : 0;
   const minutes = Math.floor(timeUntilRefresh / 60);
   const seconds = timeUntilRefresh % 60;
   

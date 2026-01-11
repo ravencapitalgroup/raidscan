@@ -165,12 +165,7 @@ export function ScannerProvider({ children }) {
     return () => clearInterval(interval);
   }, [symbols.join(','), refreshInterval]);
   
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNextRefresh(prev => prev ? prev : Date.now() + refreshInterval);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [refreshInterval]);
+
 
   const value = {
     isScanning,
