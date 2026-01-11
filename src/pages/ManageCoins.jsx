@@ -60,6 +60,39 @@ export default function ManageCoins() {
     },
   });
 
+  const selectAllAssets = useMutation({
+    mutationFn: async () => {
+      for (const asset of assets) {
+        if (!asset.is_active) {
+          await base44.entities.WatchlistAsset.update(asset.id, { is_active: true });
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
+      setTimeout(async () => {
+        try {
+          await scanMarkets();
+        } catch (err) {
+          console.error('Error refreshing data after select all:', err);
+        }
+      }, 2000);
+    },
+  });
+
+  const deselectAllAssets = useMutation({
+    mutationFn: async () => {
+      for (const asset of assets) {
+        if (asset.is_active) {
+          await base44.entities.WatchlistAsset.update(asset.id, { is_active: false });
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
+    },
+  });
+
   const categoryOrder = ['Layer 1', 'Layer 2', 'DeFi', 'AI', 'Gaming', 'Meme', 'Infrastructure', 'Other'];
   const categories = ['all', ...categoryOrder];
   
