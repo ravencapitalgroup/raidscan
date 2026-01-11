@@ -92,6 +92,11 @@ export function ScannerProvider({ children }) {
     queryFn: () => base44.entities.WatchlistAsset.filter({ is_active: true }),
   });
 
+  const { data: trackedPOIs = [] } = useQuery({
+    queryKey: ['trackedPOIs'],
+    queryFn: () => base44.entities.TrackedPOI.list(),
+  });
+
   const watchlistAssets = rawWatchlistAssets.reduce((acc, asset) => {
     const existing = acc.find(a => a.symbol === asset.symbol);
     if (!existing) {
@@ -119,22 +124,39 @@ export function ScannerProvider({ children }) {
       
       for (const symbol of symbols) {
         if (prices[symbol]) {
-          const pois = calculatePOIs(symbol, prices[symbol].price);
-          
-          Object.entries(pois).forEach(([poiType, data]) => {
-            if (data.isActive) {
-              const isHighRaid = poiType.includes('H');
+          const symbolPOIs = trackedPOIs.filter(p => p.symbol === symbol);
+          const pois = {};
+          const proximityThreshold = 0.01; // 1% proximity threshold
+
+          symbolPOIs.forEach(poi => {
+            const proximityPercent = Math.abs(prices[symbol].price - poi.price) / poi.price;
+            const isRaided = proximityPercent <= proximityThreshold;
+
+            pois[poi.poi_type] = {
+              price: poi.price,
+              isRaided,
+              isActive: true
+            };
+
+            if (isRaided) {
+              const isHighRaid = poi.poi_type.includes('H');
               newRaids.push({
                 symbol,
-                poi_type: poiType,
+                poi_type: poi.poi_type,
                 raid_direction: isHighRaid ? 'bullish' : 'bearish',
-                poi_price: data.price,
+                poi_price: poi.price,
                 raid_price: prices[symbol].price,
                 timestamp: new Date().toISOString()
               });
+
+              // Update POI status in database
+              base44.entities.TrackedPOI.update(poi.id, {
+                status: 'raided',
+                last_raid_date: new Date().toISOString()
+              }).catch(err => console.error('Error updating POI:', err));
             }
           });
-          
+
           newAssetData[symbol] = {
             ...prices[symbol],
             pois,
