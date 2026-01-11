@@ -31,14 +31,8 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
     return 'bg-slate-800/50';
   };
 
-  const getTextColor = () => {
-    if (isRaidActive) {
-      return isHighPOI ? 'text-emerald-400' : 'text-rose-400';
-    }
-    if (isApproaching) {
-      return isHighPOI ? 'text-emerald-300' : 'text-rose-300';
-    }
-    return 'text-slate-400';
+  const getLabelColor = () => {
+    return isHighPOI ? 'text-emerald-400' : 'text-rose-400';
   };
 
   const getBorderColor = () => {
