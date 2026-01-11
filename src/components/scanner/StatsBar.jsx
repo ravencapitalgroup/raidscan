@@ -19,6 +19,20 @@ export default function StatsBar({ stats }) {
       bg: 'bg-rose-500/10'
     },
     {
+      label: 'PMH Raids',
+      value: stats?.pmhRaids || 0,
+      icon: TrendingUp,
+      color: 'text-purple-400',
+      bg: 'bg-purple-500/10'
+    },
+    {
+      label: 'PML Raids',
+      value: stats?.pmlRaids || 0,
+      icon: TrendingDown,
+      color: 'text-purple-400',
+      bg: 'bg-purple-500/10'
+    },
+    {
       label: 'PQH Raids',
       value: stats?.pqhRaids || 0,
       icon: Target,
@@ -35,7 +49,7 @@ export default function StatsBar({ stats }) {
   ];
   
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
       {statItems.map((item) => (
         <div
           key={item.label}

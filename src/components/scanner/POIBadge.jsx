@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 const poiConfig = {
   PWH: { label: 'PWH', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   PWL: { label: 'PWL', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+  PMH: { label: 'PMH', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  PML: { label: 'PML', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   PQH: { label: 'PQH', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   PQL: { label: 'PQL', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
 };
