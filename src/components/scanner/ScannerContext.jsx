@@ -87,26 +87,10 @@ export function ScannerProvider({ children }) {
   const [error, setError] = useState(null);
   const [timezone, setTimezone] = useState('UTC');
 
-  const { data: binanceAssets = [] } = useQuery({
-    queryKey: ['watchlistAssetsBinance'],
-    queryFn: () => base44.entities.WatchlistAssetBinance.filter({ is_active: true }),
+  const { data: watchlistAssets = [] } = useQuery({
+    queryKey: ['watchlistAssets'],
+    queryFn: () => base44.entities.WatchlistAsset.filter({ is_active: true }),
   });
-
-  const { data: binanceUSAssets = [] } = useQuery({
-    queryKey: ['watchlistAssetsBinanceUS'],
-    queryFn: () => base44.entities.WatchlistAssetBinanceUS.filter({ is_active: true }),
-  });
-
-  const watchlistAssets = [...binanceAssets, ...binanceUSAssets].reduce((acc, asset) => {
-    const existing = acc.find(a => a.symbol === asset.symbol);
-    if (!existing) {
-      acc.push(asset);
-    } else if (new Date(asset.created_date) > new Date(existing.created_date)) {
-      const index = acc.indexOf(existing);
-      acc[index] = asset;
-    }
-    return acc;
-  }, []);
 
   const symbols = watchlistAssets.map(a => a.symbol);
 
