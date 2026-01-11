@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
 import { useScannerData } from '@/components/scanner/ScannerContext';
-import LoadingPopup from '@/components/LoadingPopup';
 
 const categoryColors = {
   'Layer 1': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -61,34 +60,6 @@ export default function ManageCoins() {
     },
   });
 
-  const toggleAllAssets = useMutation({
-    mutationFn: async () => {
-      const shouldActivate = activeCount < assets.length / 2;
-      const batchSize = 2; // Update 2 assets at a time
-      const delayBetweenUpdates = 3000; // 3 seconds between each update
-      const delayBetweenBatches = 8000; // 8 seconds between batches
-      
-      for (let i = 0; i < assets.length; i += batchSize) {
-        const batch = assets.slice(i, i + batchSize);
-        
-        // Process batch sequentially with 3 second delay between each
-        for (const asset of batch) {
-          await base44.entities.WatchlistAsset.update(asset.id, { is_active: shouldActivate });
-          await new Promise(resolve => setTimeout(resolve, delayBetweenUpdates));
-        }
-        
-        // Wait between batches to prevent rate limiting
-        if (i + batchSize < assets.length) {
-          await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
-        }
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
-      queryClient.refetchQueries({ queryKey: ['watchlistAssets'] });
-    },
-  });
-
   const categoryOrder = ['Layer 1', 'Layer 2', 'DeFi', 'AI', 'Gaming', 'Meme', 'Infrastructure', 'Other'];
   const categories = ['all', ...categoryOrder];
   
@@ -114,10 +85,8 @@ export default function ManageCoins() {
   const activeCount = assets.filter(a => a.is_active).length;
 
   return (
-      <>
-        <LoadingPopup isOpen={toggleAllAssets.isPending} message="Updating assets..." />
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-          <div className="fixed inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDI5M2EiIGZpbGwtb3BhY2l0eT0iMC4zIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0tNiA2aC0ydi00aDJ2NHptMC02aC0ydi00aDJ2NHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30 pointer-events-none" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="fixed inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDI5M2EiIGZpbGwtb3BhY2l0eT0iMC4zIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0tNiA2aC0ydi00aDJ2NHptMC02aC0ydi00aDJ2NHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30 pointer-events-none" />
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -156,32 +125,16 @@ export default function ManageCoins() {
               />
             </div>
             
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/50 border border-slate-700/50">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-sm text-slate-300 font-medium">{activeCount} Active</span>
-                </div>
-                <span className="text-slate-600">•</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-slate-600" />
-                  <span className="text-sm text-slate-500">{assets.length - activeCount} Inactive</span>
-                </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/50 border border-slate-700/50">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-sm text-slate-300 font-medium">{activeCount} Active</span>
               </div>
-              <Button
-                onClick={() => toggleAllAssets.mutate()}
-                disabled={toggleAllAssets.isPending}
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "transition-colors",
-                  activeCount < assets.length / 2
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-                    : "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
-                )}
-              >
-                {activeCount < assets.length / 2 ? "Turn All On" : "Turn All Off"}
-              </Button>
+              <span className="text-slate-600">•</span>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-slate-600" />
+                <span className="text-sm text-slate-500">{assets.length - activeCount} Inactive</span>
+              </div>
             </div>
           </div>
 
@@ -288,7 +241,6 @@ export default function ManageCoins() {
           </div>
         )}
       </div>
-      </div>
-      </>
-    );
-  }
+    </div>
+  );
+}
