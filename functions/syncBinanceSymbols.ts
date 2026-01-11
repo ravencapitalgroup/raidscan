@@ -27,13 +27,16 @@ const fetchKlines = async (symbol, interval, limit = 100) => {
   ];
   
   try {
-    const data = await fetchWithFallback(endpoints);
-    return Array.isArray(data) ? data : [];
+    const result = await fetchWithFallback(endpoints);
+    return Array.isArray(result.data) ? result.data : [];
   } catch (err) {
     console.error(`Failed to fetch klines for ${symbol}:`, err.message);
     return [];
   }
 };
+
+// Helper for rate limiting
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 Deno.serve(async (req) => {
   try {
