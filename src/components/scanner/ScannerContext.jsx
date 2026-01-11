@@ -107,18 +107,19 @@ export function ScannerProvider({ children }) {
     
     try {
       const prices = await fetchPrices(symbols);
-      
+
       // Fetch PoiData from database for all symbols
       const allPoiData = await base44.entities.PoiData.list();
-      
+
       const newAssetData = {};
       const newRaids = [];
-      
+
       for (const symbol of symbols) {
-        if (prices[symbol]) {
-          // Get PoiData for this symbol from database
-          const weeklyData = allPoiData.find(poi => poi.symbol === symbol && poi.timeframe === '1w');
-          const monthlyData = allPoiData.find(poi => poi.symbol === symbol && poi.timeframe === '1M');
+        const normalizedSymbol = normalizeSymbol(symbol);
+        if (prices[normalizedSymbol]) {
+          // Get PoiData for this symbol from database (normalize for lookup)
+          const weeklyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1w');
+          const monthlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1M');
           
           // Build pois from database data
           const pois = {
