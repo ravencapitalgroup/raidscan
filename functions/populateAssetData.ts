@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
 
     // Fetch all assets with missing type
     const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
-    const assetsNeedingType = allAssets.filter(a => !a.type);
+    const assetsNeedingType = allAssets.filter(a => !a.type && typeof a.source === 'string');
 
     console.log(`Found ${assetsNeedingType.length} assets needing type`);
 
