@@ -106,27 +106,10 @@ Deno.serve(async (req) => {
 
     // Get existing symbols
     const existingAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
-    const existingSymbolMap = new Map(existingAssets.map(a => [a.symbol, a]));
+    const existingSymbols = new Set(existingAssets.map(a => a.symbol));
 
-    // Filter out existing symbols and handle updates
-    const newSymbols = [];
-    const symbolsToUpdate = [];
-    
-    for (const symbol of symbols) {
-      if (existingSymbolMap.has(symbol.symbol)) {
-        const existing = existingSymbolMap.get(symbol.symbol);
-        // Update futures/spot flags if needed
-        if (symbol.is_futures !== existing.is_futures || symbol.is_spot !== existing.is_spot) {
-          symbolsToUpdate.push({
-            id: existing.id,
-            is_futures: symbol.is_futures,
-            is_spot: symbol.is_spot
-          });
-        }
-      } else {
-        newSymbols.push(symbol);
-      }
-    }
+    // Filter out existing symbols
+    const newSymbols = symbols.filter(s => !existingSymbols.has(s.symbol));
     
     console.log(`Found ${newSymbols.length} new symbols to add`);
 
