@@ -31,8 +31,14 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
     return 'bg-slate-800/50';
   };
 
-  const getLabelColor = () => {
-    return isHighPOI ? 'text-emerald-400' : 'text-rose-400';
+  const getTextColor = () => {
+    if (isRaidActive) {
+      return isHighPOI ? 'text-emerald-400' : 'text-rose-400';
+    }
+    if (isApproaching) {
+      return isHighPOI ? 'text-emerald-300' : 'text-rose-300';
+    }
+    return 'text-slate-400';
   };
 
   const getBorderColor = () => {
@@ -55,6 +61,7 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
     <div className={cn(
       "relative flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300",
       getBackgroundColor(),
+      getTextColor(),
       getBorderColor(),
       getBorderWidth()
     )}>
@@ -70,8 +77,8 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
           )} />
         </span>
       )}
-      <span className={cn("font-mono text-xs font-semibold", getLabelColor())}>{config.label}</span>
-      <span className={cn("font-mono text-xs opacity-70", getLabelColor())}>
+      <span className="font-mono text-xs font-semibold">{config.label}</span>
+      <span className="font-mono text-xs opacity-70">
         ${price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
       </span>
     </div>
