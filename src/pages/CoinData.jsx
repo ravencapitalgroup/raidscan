@@ -59,6 +59,8 @@ export default function CoinData() {
                 <TableHead className="text-slate-400 font-semibold text-right">24h Change</TableHead>
                 <TableHead className="text-slate-400 font-semibold text-right">PWH</TableHead>
                 <TableHead className="text-slate-400 font-semibold text-right">PWL</TableHead>
+                <TableHead className="text-slate-400 font-semibold text-right">PMH</TableHead>
+                <TableHead className="text-slate-400 font-semibold text-right">PML</TableHead>
                 <TableHead className="text-slate-400 font-semibold text-right">PQH</TableHead>
                 <TableHead className="text-slate-400 font-semibold text-right">PQL</TableHead>
                 <TableHead className="text-slate-400 font-semibold text-center">Status</TableHead>
@@ -129,6 +131,30 @@ export default function CoinData() {
                           data.pois.PWL.isActive ? "text-cyan-400 font-semibold" : "text-slate-400"
                         )}>
                           ${data.pois.PWL.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {data?.pois?.PMH ? (
+                        <span className={cn(
+                          "font-mono text-sm",
+                          data.pois.PMH.isActive ? "text-purple-400 font-semibold" : "text-slate-400"
+                        )}>
+                          ${data.pois.PMH.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {data?.pois?.PML ? (
+                        <span className={cn(
+                          "font-mono text-sm",
+                          data.pois.PML.isActive ? "text-purple-400 font-semibold" : "text-slate-400"
+                        )}>
+                          ${data.pois.PML.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
                       ) : (
                         <span className="text-slate-600">—</span>

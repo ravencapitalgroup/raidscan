@@ -8,6 +8,7 @@ const ScannerContext = createContext();
 const calculatePOIs = (symbol, currentPrice) => {
   const variance = currentPrice * 0.05;
   const weeklyVariance = currentPrice * 0.08;
+  const monthlyVariance = currentPrice * 0.12;
   const quarterlyVariance = currentPrice * 0.15;
   
   return {
@@ -20,6 +21,16 @@ const calculatePOIs = (symbol, currentPrice) => {
       price: currentPrice - weeklyVariance * (0.5 + Math.random() * 0.5),
       isRaided: Math.random() > 0.85,
       isActive: Math.random() > 0.9
+    },
+    PMH: { 
+      price: currentPrice + monthlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.88,
+      isActive: Math.random() > 0.92
+    },
+    PML: { 
+      price: currentPrice - monthlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.88,
+      isActive: Math.random() > 0.92
     },
     PQH: { 
       price: currentPrice + quarterlyVariance * (0.5 + Math.random() * 0.5),

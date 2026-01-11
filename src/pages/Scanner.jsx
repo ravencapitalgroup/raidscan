@@ -51,6 +51,8 @@ export default function Scanner() {
   const stats = {
     pwhRaids: alerts.filter(a => a.poi_type === 'PWH').length,
     pwlRaids: alerts.filter(a => a.poi_type === 'PWL').length,
+    pmhRaids: alerts.filter(a => a.poi_type === 'PMH').length,
+    pmlRaids: alerts.filter(a => a.poi_type === 'PML').length,
     pqhRaids: alerts.filter(a => a.poi_type === 'PQH').length,
     pqlRaids: alerts.filter(a => a.poi_type === 'PQL').length,
   };
