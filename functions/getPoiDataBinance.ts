@@ -165,6 +165,17 @@ Deno.serve(async (req) => {
                 await delay(200);
               }
             }
+
+            // Update WatchlistAsset with last_updated_date
+            if (assetDetails?.id) {
+              try {
+                await base44.asServiceRole.entities.WatchlistAsset.update(assetDetails.id, {
+                  last_updated_date: now.toISOString()
+                });
+              } catch (err) {
+                console.error(`Error updating last_updated_date for ${symbol}: ${err.message}`);
+              }
+            }
           }
 
           if (i < symbolsInBatch.length - 1) {
