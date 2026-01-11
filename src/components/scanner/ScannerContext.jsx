@@ -4,46 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 
 const ScannerContext = createContext();
 
-// Simulated POI calculation
-const calculatePOIs = (symbol, currentPrice) => {
-  const variance = currentPrice * 0.05;
-  const weeklyVariance = currentPrice * 0.08;
-  const monthlyVariance = currentPrice * 0.12;
-  const quarterlyVariance = currentPrice * 0.15;
-  
-  return {
-    PWH: { 
-      price: currentPrice + weeklyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.85,
-      isActive: Math.random() > 0.9
-    },
-    PWL: { 
-      price: currentPrice - weeklyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.85,
-      isActive: Math.random() > 0.9
-    },
-    PMH: { 
-      price: currentPrice + monthlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.88,
-      isActive: Math.random() > 0.92
-    },
-    PML: { 
-      price: currentPrice - monthlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.88,
-      isActive: Math.random() > 0.92
-    },
-    PQH: { 
-      price: currentPrice + quarterlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.92,
-      isActive: Math.random() > 0.95
-    },
-    PQL: { 
-      price: currentPrice - quarterlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.92,
-      isActive: Math.random() > 0.95
-    },
-  };
-};
+
 
 // Normalize symbol to Binance format (e.g., BTC -> BTCUSDT)
 const normalizeSymbol = (symbol) => {
