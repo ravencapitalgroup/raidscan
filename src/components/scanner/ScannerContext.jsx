@@ -168,7 +168,7 @@ export function ScannerProvider({ children }) {
           });
 
           newAssetData[normalizedSymbol] = {
-            ...prices[normalizedSymbol],
+            ...prices[priceKey],
             pois,
             activeRaids: newRaids.filter(r => r.symbol === normalizedSymbol)
           };
