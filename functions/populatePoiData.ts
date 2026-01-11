@@ -206,16 +206,13 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: !rateLimitHit,
-      processedSymbols: symbolsToProcess.length,
-      insertedCount: insertedCount,
+      totalSymbols: allSymbols.length,
+      processedSymbols: allSymbols.length,
+      totalCandles: totalInserted,
       rateLimitHit: rateLimitHit,
-      nextStartIndex: nextStartIndex,
-      totalSymbols: totalSymbols,
-      hasMoreSymbols: hasMoreSymbols,
-      progress: `${nextStartIndex}/${totalSymbols} symbols processed`,
       message: rateLimitHit 
-        ? `Rate limit hit. Processed up to ${insertedCount} candles. Retry in next execution.`
-        : `Updated POI data for ${symbolsToProcess.length} symbols (${insertedCount} candles inserted)`
+        ? `Rate limit hit during processing. Check logs for details.`
+        : `Successfully updated POI data for all ${allSymbols.length} symbols (${totalInserted} candles inserted)`
     });
   } catch (error) {
     console.error(`Fatal error in populatePoiData: ${error.message}`);
