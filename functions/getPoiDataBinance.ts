@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
           }
 
           if (i < symbolsInBatch.length - 1) {
-            await delay(3000);
+            await delay(1500);
           }
         } catch (err) {
           if (err.message === 'RATE_LIMIT_HIT') {
