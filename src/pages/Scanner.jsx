@@ -167,16 +167,18 @@ export default function Scanner() {
   useEffect(() => {
     if (symbols.length === 0) return;
     
+    // Initial scan
     scanMarkets();
     setNextRefresh(Date.now() + refreshInterval);
     
+    // Set up interval
     const interval = setInterval(() => {
       scanMarkets();
       setNextRefresh(Date.now() + refreshInterval);
     }, refreshInterval);
     
     return () => clearInterval(interval);
-  }, [refreshInterval]);
+  }, [symbols, refreshInterval, scanMarkets]);
   
   // Update countdown timer
   useEffect(() => {
