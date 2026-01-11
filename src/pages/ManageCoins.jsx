@@ -44,8 +44,17 @@ export default function ManageCoins() {
   }, []);
 
   const toggleAsset = useMutation({
-    mutationFn: ({ id, is_active }) => 
-      base44.entities.WatchlistAsset.update(id, { is_active }),
+    mutationFn: async ({ id, symbol, is_active }) => {
+      // Update the specific asset
+      await base44.entities.WatchlistAsset.update(id, { is_active });
+      
+      // Find and delete any duplicates of this symbol (keep the one we just updated)
+      const allAssets = await base44.entities.WatchlistAsset.list();
+      const duplicates = allAssets.filter(a => a.symbol === symbol && a.id !== id);
+      for (const dup of duplicates) {
+        await base44.entities.WatchlistAsset.delete(dup.id);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
       queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
@@ -161,7 +170,7 @@ export default function ManageCoins() {
                 {categoryAssets.map((asset) => (
                   <motion.button
                     key={asset.id}
-                    onClick={() => toggleAsset.mutate({ id: asset.id, is_active: !asset.is_active })}
+                    onClick={() => toggleAsset.mutate({ id: asset.id, symbol: asset.symbol, is_active: !asset.is_active })}
                     className={cn(
                       "flex items-center justify-between p-4 rounded-xl border transition-all",
                       "hover:scale-[1.02] active:scale-[0.98]",
