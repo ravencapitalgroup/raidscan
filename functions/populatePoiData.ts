@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const fetchKlines = async (sym, timeframe) => {
       const endpoints = [
         `https://fapi.binance.com/fapi/v1/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`,
-        `https://api.binance.us/fapi/v1/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`
+        `https://api.binance.us/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`
       ];
 
       for (const url of endpoints) {
