@@ -4,79 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 
 const ScannerContext = createContext();
 
-// Simulated POI calculation
-const calculatePOIs = (symbol, currentPrice) => {
-  const variance = currentPrice * 0.05;
-  const weeklyVariance = currentPrice * 0.08;
-  const monthlyVariance = currentPrice * 0.12;
-  const quarterlyVariance = currentPrice * 0.15;
-  
-  return {
-    PWH: { 
-      price: currentPrice + weeklyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.85,
-      isActive: Math.random() > 0.9
-    },
-    PWL: { 
-      price: currentPrice - weeklyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.85,
-      isActive: Math.random() > 0.9
-    },
-    PMH: { 
-      price: currentPrice + monthlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.88,
-      isActive: Math.random() > 0.92
-    },
-    PML: { 
-      price: currentPrice - monthlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.88,
-      isActive: Math.random() > 0.92
-    },
-    PQH: { 
-      price: currentPrice + quarterlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.92,
-      isActive: Math.random() > 0.95
-    },
-    PQL: { 
-      price: currentPrice - quarterlyVariance * (0.5 + Math.random() * 0.5),
-      isRaided: Math.random() > 0.92,
-      isActive: Math.random() > 0.95
-    },
-  };
-};
-
-// Fetch prices from Binance
+// Fetch prices from Binance API
 const fetchPrices = async (symbols) => {
-  const symbolList = symbols.map(s => s.replace('USDT', '')).join(', ');
-  
-  const result = await base44.integrations.Core.InvokeLLM({
-    prompt: `Get the current live Binance PERPETUAL FUTURES prices (NOT spot prices) and 24h price change percentages for these trading pairs: ${symbolList}/USDT. Make sure to use Binance Futures/Perpetuals data. Return ONLY the data, no explanations.`,
-    add_context_from_internet: true,
-    response_json_schema: {
-      type: "object",
-      properties: {
-        prices: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              symbol: { type: "string", description: "Symbol with USDT suffix, e.g. BTCUSDT" },
-              price: { type: "number" },
-              change24h: { type: "number", description: "24h percentage change" }
-            }
-          }
-        }
-      }
-    }
-  });
-  
-  return result.prices.reduce((acc, item) => {
-    acc[item.symbol] = {
-      price: item.price,
-      change24h: item.change24h
-    };
-    return acc;
-  }, {});
+  const response = await base44.functions.invoke('fetchCryptoData', { symbols });
+  return response.data.prices;
 };
 
 export function ScannerProvider({ children }) {
