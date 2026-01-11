@@ -154,10 +154,10 @@ export function ScannerProvider({ children }) {
                 });
 
                 newAssetData[normalizedSymbol] = {
-                ...prices[normalizedSymbol],
-            pois,
-            activeRaids: newRaids.filter(r => r.symbol === symbol)
-          };
+                  ...prices[normalizedSymbol],
+                  pois,
+                  activeRaids: newRaids.filter(r => r.symbol === normalizedSymbol)
+                };
         }
       }
       
