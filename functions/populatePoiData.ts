@@ -25,12 +25,12 @@ Deno.serve(async (req) => {
     const timeframes = ['1w', '1M'];
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Helper function to fetch klines with fallback to Binance US
-    const fetchKlines = async (sym, timeframe) => {
+    // Helper function to fetch klines from endpoints
+    const fetchKlinesInternal = async (sym, timeframe) => {
       const endpoints = [
         `https://fapi.binance.com/fapi/v1/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`,
-         `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`,
-         `https://api.binance.us/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`
+        `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`,
+        `https://api.binance.us/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`
       ];
 
       for (const url of endpoints) {
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
 
           if (Array.isArray(data)) {
             console.log(`Got ${data.length} candles for ${sym}-${timeframe}`);
-            return data;
+            return { data, success: true };
           }
         } catch (err) {
           console.log(`Error fetching from ${url}: ${err.message}`);
@@ -54,6 +54,25 @@ Deno.serve(async (req) => {
         }
       }
 
+      return { data: [], success: false };
+    };
+
+    // Fetch klines with retry logic and exponential backoff
+    const fetchKlinesWithRetry = async (sym, timeframe, retries = 3) => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        const { data, success } = await fetchKlinesInternal(sym, timeframe);
+        if (success) {
+          return data;
+        }
+
+        if (attempt < retries) {
+          const backoffMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s exponential backoff
+          console.warn(`Attempt ${attempt}/${retries} for ${sym}-${timeframe} failed. Cooling off for ${backoffMs}ms before retry...`);
+          await delay(backoffMs);
+        }
+      }
+
+      console.error(`Failed to fetch klines for ${sym}-${timeframe} after ${retries} attempts`);
       return [];
     };
 
