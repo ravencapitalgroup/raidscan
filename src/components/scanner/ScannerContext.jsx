@@ -70,13 +70,13 @@ const fetchPrices = async (symbols, retries = 3) => {
       clearTimeout(timeoutId);
       console.log('Raw result from fetchBinancePrices:', result);
 
-      // Check if result or result.prices is undefined/null to prevent 'reduce' error
-      if (!result || !Array.isArray(result.prices)) {
+      // Check if result.data.prices is undefined/null to prevent 'reduce' error
+      if (!result || !result.data || !Array.isArray(result.data.prices)) {
         console.error('Invalid or empty response from fetchBinancePrices:', result);
         return {}; // Return empty object to prevent further errors
       }
 
-      return result.prices.reduce((acc, item) => {
+      return result.data.prices.reduce((acc, item) => {
         if (item.error) {
           console.error(`Error fetching ${item.symbol}:`, item.error);
           return acc;
