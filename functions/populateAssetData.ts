@@ -28,9 +28,19 @@ Deno.serve(async (req) => {
 
         try {
           const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-            prompt: `Categorize these cryptocurrency symbols into their blockchain/asset type. For each symbol, provide one of: Layer 1 blockchain, Layer 2 solution, DeFi protocol, AI/ML token, Gaming/Metaverse, Meme coin, Infrastructure, or Other. Be concise and accurate.
-            
-Symbols: ${symbolNames.join(', ')}`,
+            prompt: `Categorize these cryptocurrency symbols into their blockchain/asset type. Use ONLY these categories:
+        - Layer 1: Base blockchain networks (e.g., Ethereum, Solana, Bitcoin, Cardano, Polkadot)
+        - Layer 2: Scalability solutions built on Layer 1s (e.g., Polygon, Arbitrum, Optimism, Starkware)
+        - DeFi: Decentralized Finance protocols (e.g., Aave, Uniswap, Curve, Lido, MakerDAO)
+        - AI: Projects integrating AI/ML technologies (e.g., Render, Fetch.ai, Chainlink, Injective)
+        - Gaming: Blockchain games or metaverse projects (e.g., Axie Infinity, Decentraland, The Sandbox, Gala)
+        - Meme: Internet culture-driven coins (e.g., Dogecoin, Shiba Inu, Floki)
+        - Infrastructure: Fundamental crypto ecosystem tools (e.g., Chainlink, The Graph, Uniswap, Compound)
+        - Other: Only if no category truly fits
+
+        Prioritize accuracy. Use 'Other' as a last resort. For each symbol, provide one category.
+
+        Symbols: ${symbolNames.join(', ')}`,
             add_context_from_internet: true,
             response_json_schema: {
               type: "object",
