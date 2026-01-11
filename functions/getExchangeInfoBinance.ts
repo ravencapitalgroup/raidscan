@@ -1,5 +1,33 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+// Helper to categorize symbols using AI
+const categorizeSymbols = async (base44, symbols) => {
+  if (symbols.length === 0) return {};
+  
+  try {
+    const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      prompt: `Categorize these cryptocurrency symbols into their blockchain/asset type. For each symbol, provide: Layer 1 blockchain, Layer 2 solution, DeFi protocol, AI/ML token, Gaming/Metaverse, Meme coin, Infrastructure, or Other. Be concise and accurate.
+      
+Symbols: ${symbols.join(', ')}`,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          categories: {
+            type: "object",
+            additionalProperties: { type: "string" }
+          }
+        }
+      }
+    });
+    
+    return result.categories || {};
+  } catch (err) {
+    console.error('Error categorizing symbols:', err.message);
+    return {};
+  }
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -74,6 +102,10 @@ Deno.serve(async (req) => {
     console.log(`New symbols to add: ${newSymbols.length}`);
 
     if (newSymbols.length > 0) {
+      // Categorize new symbols using AI
+      const symbolNames = newSymbols.map(s => s.symbol.replace('USDT', ''));
+      const types = await categorizeSymbols(base44, symbolNames);
+      
       // Bulk create new assets
       const assetsToCreate = newSymbols.map(s => ({
         symbol: s.symbol,
@@ -81,7 +113,8 @@ Deno.serve(async (req) => {
         is_active: true,
         category: 'Other',
         is_futures: s.is_futures,
-        is_spot: s.is_spot
+        is_spot: s.is_spot,
+        type: types[s.symbol.replace('USDT', '')] || 'Other'
       }));
 
       const batchSize = 100;
