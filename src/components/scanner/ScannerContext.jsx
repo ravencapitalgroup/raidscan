@@ -115,10 +115,11 @@ export function ScannerProvider({ children }) {
       const newRaids = [];
 
       for (const symbol of symbols) {
-        if (prices[symbol]) {
+        const normalizedSymbol = normalizeSymbol(symbol);
+        if (prices[normalizedSymbol]) {
           // Get PoiData for this symbol from database
-          const weeklyData = allPoiData.find(poi => poi.symbol === symbol && poi.timeframe === '1w');
-          const monthlyData = allPoiData.find(poi => poi.symbol === symbol && poi.timeframe === '1M');
+          const weeklyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1w');
+          const monthlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1M');
 
           // Build pois from database data
           const pois = {
