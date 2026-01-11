@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
     const fetchKlines = async (sym, timeframe, endpoint) => {
       try {
         const response = await fetch(endpoint);
-        await delay(2000);
 
         if (response.status === 429) {
           return { data: [], success: false, rateLimited: true };
@@ -42,7 +41,6 @@ Deno.serve(async (req) => {
         }
       } catch (err) {
         console.log(`Error fetching from ${endpoint}: ${err.message}`);
-        await delay(2000);
       }
 
       return { data: [], success: false, rateLimited: false };
@@ -114,12 +112,7 @@ Deno.serve(async (req) => {
 
              if (Array.isArray(data) && data.length > 0) {
                const existingData = await base44.asServiceRole.entities.PoiDataBinanceUS.filter({ symbol, timeframe });
-               for (let j = 0; j < existingData.length; j += 50) {
-                 const batch = existingData.slice(j, j + 50);
-                 for (const record of batch) {
-                   await base44.asServiceRole.entities.PoiDataBinanceUS.delete(record.id);
-                 }
-               }
+               await Promise.all(existingData.map(record => base44.asServiceRole.entities.PoiDataBinanceUS.delete(record.id)));
 
                const candles = data.map(kline => ({
                  symbol,
@@ -152,10 +145,6 @@ Deno.serve(async (req) => {
               } catch (err) {
                 console.error(`BulkCreate error for ${symbol}: ${err.message}`);
               }
-
-              if (j + insertBatchSize < candlesForSymbol.length) {
-                await delay(200);
-              }
             }
 
             // Update WatchlistAsset with last_updated_date
@@ -168,10 +157,6 @@ Deno.serve(async (req) => {
                 console.error(`Error updating last_updated_date for ${symbol}: ${err.message}`);
               }
             }
-          }
-
-          if (i < symbolsInBatch.length - 1) {
-            await delay(1500);
           }
         } catch (err) {
           if (err.message === 'RATE_LIMIT_HIT') {
