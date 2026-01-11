@@ -5,17 +5,10 @@ import ScannerHeader from '@/components/scanner/ScannerHeader';
 import AssetCard from '@/components/scanner/AssetCard';
 import RaidAlertFeed from '@/components/scanner/RaidAlertFeed';
 import StatsBar from '@/components/scanner/StatsBar';
+import SymbolManager from '@/components/scanner/SymbolManager';
 import { Input } from "@/components/ui/input";
 import { Search, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-// Top Binance perpetual futures to scan
-const DEFAULT_SYMBOLS = [
-  'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT',
-  'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 'ATOMUSDT',
-  'LTCUSDT', 'UNIUSDT', 'APTUSDT', 'ARBUSDT', 'OPUSDT',
-  'NEARUSDT', 'INJUSDT', 'SUIUSDT', 'SEIUSDT', 'TIAUSDT'
-];
 
 const REFRESH_INTERVALS = [
   { label: '5 Minutes', value: 300000, shortLabel: '5m' },
@@ -110,6 +103,14 @@ export default function Scanner() {
   const [nextRefresh, setNextRefresh] = useState(null);
   const queryClient = useQueryClient();
 
+  // Fetch active symbols from database
+  const { data: watchlistAssets = [] } = useQuery({
+    queryKey: ['watchlistAssets'],
+    queryFn: () => base44.entities.WatchlistAsset.filter({ is_active: true }),
+  });
+
+  const symbols = watchlistAssets.map(a => a.symbol);
+
   // Fetch saved alerts
   const { data: alerts = [] } = useQuery({
     queryKey: ['raidAlerts'],
@@ -130,14 +131,16 @@ export default function Scanner() {
 
   // Scan for prices and POIs
   const scanMarkets = useCallback(async () => {
+    if (symbols.length === 0) return;
+    
     setIsScanning(true);
     
-    const prices = await fetchPrices(DEFAULT_SYMBOLS);
+    const prices = await fetchPrices(symbols);
     
     const newAssetData = {};
     const newRaids = [];
     
-    for (const symbol of DEFAULT_SYMBOLS) {
+    for (const symbol of symbols) {
       if (prices[symbol]) {
         const pois = calculatePOIs(symbol, prices[symbol].price);
         
@@ -166,7 +169,7 @@ export default function Scanner() {
     
     setAssetData(newAssetData);
     setIsScanning(false);
-  }, []);
+  }, [symbols]);
 
   // Initial scan and periodic refresh
   useEffect(() => {
@@ -190,7 +193,7 @@ export default function Scanner() {
   }, [refreshInterval]);
 
   // Filter assets
-  const filteredSymbols = DEFAULT_SYMBOLS.filter(symbol => {
+  const filteredSymbols = symbols.filter(symbol => {
     const matchesSearch = symbol.toLowerCase().includes(searchQuery.toLowerCase());
     if (filterType === 'all') return matchesSearch;
     if (filterType === 'raids') return matchesSearch && assetData[symbol]?.activeRaids?.length > 0;
@@ -216,7 +219,7 @@ export default function Scanner() {
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <ScannerHeader
-          totalAssets={DEFAULT_SYMBOLS.length}
+          totalAssets={symbols.length}
           activeRaids={totalActiveRaids}
           isScanning={isScanning}
           onRefresh={() => {

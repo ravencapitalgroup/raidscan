@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import RefreshIntervalSelector from './RefreshIntervalSelector';
+import SymbolManager from './SymbolManager';
 
 export default function ScannerHeader({ 
   totalAssets, 
@@ -54,6 +55,8 @@ export default function ScannerHeader({
           </Badge>
         )}
         
+          <SymbolManager />
+          
           <Button
             variant="outline"
             size="sm"
