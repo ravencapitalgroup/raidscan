@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     const allBinanceSymbols = Array.from(symbolMap.values());
     console.log(`Total unique Binance symbols: ${allBinanceSymbols.length}`);
 
-    // Get existing symbols from consolidated entity
+    // Get existing Binance symbols
     const existingAssets = await base44.asServiceRole.entities.WatchlistAsset.filter({ source: 'binance' });
     const existingMap = new Map(existingAssets.map(a => [`${a.symbol}-${a.is_futures}`, a]));
 
