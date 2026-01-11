@@ -21,6 +21,13 @@ const categoryColors = {
   'Other': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
+const normalizeSymbol = (symbol) => {
+  if (!symbol.endsWith('USDT')) {
+    return symbol + 'USDT';
+  }
+  return symbol;
+};
+
 export default function ManageCoins() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
