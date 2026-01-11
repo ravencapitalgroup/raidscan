@@ -207,7 +207,7 @@ export default function Scanner() {
     }, refreshInterval);
     
     return () => clearInterval(interval);
-  }, [refreshInterval]);
+  }, [symbols.join(','), refreshInterval]);
   
   // Update countdown timer
   useEffect(() => {
