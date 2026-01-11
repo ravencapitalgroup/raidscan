@@ -175,6 +175,18 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Sort all PoiData by timestamp (earliest to oldest)
+    console.log('Sorting all PoiData records by timestamp...');
+    try {
+      const allPoiData = await base44.asServiceRole.entities.PoiData.list();
+      if (allPoiData.length > 0) {
+        const sorted = allPoiData.sort((a, b) => a.timestamp - b.timestamp);
+        console.log(`Sorted ${sorted.length} PoiData records from earliest to oldest`);
+      }
+    } catch (err) {
+      console.error(`Error sorting PoiData: ${err.message}`);
+    }
+
     return Response.json({
       success: !rateLimitHit,
       processedSymbols: symbolsToProcess.length,
