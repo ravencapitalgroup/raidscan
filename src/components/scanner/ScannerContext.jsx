@@ -212,6 +212,7 @@ export function ScannerProvider({ children }) {
       }
     } finally {
       setIsScanning(false);
+      setNextRefresh(Date.now() + refreshInterval);
     }
   };
 
