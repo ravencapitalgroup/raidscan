@@ -24,8 +24,10 @@ export default function SymbolManager({ onUpdate }) {
       
       const newSymbols = result.symbols || [];
       
-      // Get existing symbols from database
-      const existing = await base44.entities.WatchlistAsset.list();
+      // Get existing symbols from both Binance and Binance US
+      const existingBinance = await base44.entities.WatchlistAssetBinance.list();
+      const existingBinanceUS = await base44.entities.WatchlistAssetBinanceUS.list();
+      const existing = [...existingBinance, ...existingBinanceUS];
       const existingSymbols = existing.map(e => e.symbol);
       
       // Categorize and add new symbols
@@ -52,7 +54,8 @@ export default function SymbolManager({ onUpdate }) {
           }
         });
         
-        await base44.entities.WatchlistAsset.bulkCreate(
+        // Add to Binance by default
+        await base44.entities.WatchlistAssetBinance.bulkCreate(
           categorized.coins.map(c => ({ 
             symbol: c.symbol, 
             is_active: c.symbol === 'BTCUSDT',
@@ -66,14 +69,16 @@ export default function SymbolManager({ onUpdate }) {
       for (const symbol of toDeactivate) {
         const asset = existing.find(e => e.symbol === symbol);
         if (asset && asset.is_active) {
-          await base44.entities.WatchlistAsset.update(asset.id, { is_active: false });
+          const entity = existingBinance.find(a => a.id === asset.id) ? 'WatchlistAssetBinance' : 'WatchlistAssetBinanceUS';
+          await base44.entities[entity].update(asset.id, { is_active: false });
         }
       }
       
       return { added: toAdd.length, deactivated: toDeactivate.length, total: newSymbols.length };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
+      queryClient.invalidateQueries({ queryKey: ['watchlistAssetsBinance'] });
+      queryClient.invalidateQueries({ queryKey: ['watchlistAssetsBinanceUS'] });
       if (onUpdate) onUpdate(data);
     },
   });
@@ -81,9 +86,10 @@ export default function SymbolManager({ onUpdate }) {
   // Auto-update on mount if no symbols exist
   useEffect(() => {
     const checkAndUpdate = async () => {
-      const existing = await base44.entities.WatchlistAsset.list();
+      const existingBinance = await base44.entities.WatchlistAssetBinance.list();
+      const existingBinanceUS = await base44.entities.WatchlistAssetBinanceUS.list();
       
-      if (existing.length === 0) {
+      if (existingBinance.length === 0 && existingBinanceUS.length === 0) {
         updateSymbols.mutate();
       }
     };
