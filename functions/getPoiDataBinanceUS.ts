@@ -93,46 +93,39 @@ Deno.serve(async (req) => {
 
         try {
           for (const timeframe of timeframes) {
-            const binanceUSEndpoints = [
-              `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`
-            ];
+             const binanceUSEndpoints = [
+               `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`
+             ];
 
-            const data = await fetchKlinesWithRetry(symbol, timeframe, binanceUSEndpoints);
+             const data = await fetchKlinesWithRetry(symbol, timeframe, binanceUSEndpoints);
 
-            if (Array.isArray(data) && data.length > 0) {
-              const existingData = await base44.asServiceRole.entities.PoiDataBinanceUS.filter({ symbol, timeframe });
-              for (let j = 0; j < existingData.length; j += 50) {
-                const batch = existingData.slice(j, j + 50);
-                for (const record of batch) {
-                  await base44.asServiceRole.entities.PoiDataBinanceUS.delete(record.id);
-                }
-                if (j + 50 < existingData.length) {
-                  await delay(100);
-                }
-              }
+             if (Array.isArray(data) && data.length > 0) {
+               const existingData = await base44.asServiceRole.entities.PoiDataBinanceUS.filter({ symbol, timeframe });
+               for (let j = 0; j < existingData.length; j += 50) {
+                 const batch = existingData.slice(j, j + 50);
+                 for (const record of batch) {
+                   await base44.asServiceRole.entities.PoiDataBinanceUS.delete(record.id);
+                 }
+               }
 
-              const candles = data.map(kline => ({
-                symbol,
-                timeframe,
-                timestamp: kline[0],
-                open: parseFloat(kline[1]),
-                high: parseFloat(kline[2]),
-                low: parseFloat(kline[3]),
-                close: parseFloat(kline[4]),
-                volume: parseFloat(kline[7]),
-                quoteAssetVolume: parseFloat(kline[8]),
-                numberOfTrades: parseInt(kline[8]),
-                takerBuyBaseAssetVolume: parseFloat(kline[9]),
-                takerBuyQuoteAssetVolume: parseFloat(kline[10])
-              }));
+               const candles = data.map(kline => ({
+                 symbol,
+                 timeframe,
+                 timestamp: kline[0],
+                 open: parseFloat(kline[1]),
+                 high: parseFloat(kline[2]),
+                 low: parseFloat(kline[3]),
+                 close: parseFloat(kline[4]),
+                 volume: parseFloat(kline[7]),
+                 quoteAssetVolume: parseFloat(kline[8]),
+                 numberOfTrades: parseInt(kline[8]),
+                 takerBuyBaseAssetVolume: parseFloat(kline[9]),
+                 takerBuyQuoteAssetVolume: parseFloat(kline[10])
+               }));
 
-              candlesForSymbol.push(...candles);
-            }
-
-            if (timeframes.indexOf(timeframe) < timeframes.length - 1) {
-              await delay(1500);
-            }
-          }
+               candlesForSymbol.push(...candles);
+             }
+           }
 
           if (candlesForSymbol.length > 0) {
             const insertBatchSize = 100;
