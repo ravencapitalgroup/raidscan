@@ -10,8 +10,8 @@ Deno.serve(async (req) => {
     }
 
     const limit = 10;
-    const batchSize = 20;
-    const cooldownMs = 30000;
+    const batchSize = 5;
+    const cooldownMs = 120000;
 
     console.log(`Starting POI data update for Binance US`);
 
@@ -165,6 +165,10 @@ Deno.serve(async (req) => {
             break;
           }
           console.error(`Error processing ${symbol}: ${err.message}`);
+        }
+        
+        if (i < symbolsInBatch.length - 1) {
+          await delay(2000);
         }
       }
 
