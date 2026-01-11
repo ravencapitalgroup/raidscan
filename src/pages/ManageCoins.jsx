@@ -63,10 +63,19 @@ export default function ManageCoins() {
   const toggleAllAssets = useMutation({
     mutationFn: async () => {
       const shouldActivate = activeCount < assets.length / 2;
-      const updates = assets.map(asset =>
-        base44.entities.WatchlistAsset.update(asset.id, { is_active: shouldActivate })
-      );
-      await Promise.all(updates);
+      const batchSize = 10;
+      
+      for (let i = 0; i < assets.length; i += batchSize) {
+        const batch = assets.slice(i, i + batchSize);
+        const updates = batch.map(asset =>
+          base44.entities.WatchlistAsset.update(asset.id, { is_active: shouldActivate })
+        );
+        await Promise.all(updates);
+        
+        if (i + batchSize < assets.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
