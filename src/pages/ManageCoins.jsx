@@ -202,10 +202,10 @@ export default function ManageCoins() {
                              {asset.symbol.replace('USDT', '')}
                            </p>
                            {asset.source === 'binance' && (
-                             <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Binance_logo.svg" alt="Binance" className="w-3.5 h-3.5 opacity-60" />
+                             <span className="w-3.5 h-3.5 rounded-full bg-yellow-500 opacity-60" title="Binance" />
                            )}
                            {asset.source === 'binanceus' && (
-                             <img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/svg/color/binance.svg" alt="Binance US" className="w-3.5 h-3.5 opacity-60" />
+                             <span className="w-3.5 h-3.5 rounded-full bg-yellow-500 opacity-40" title="Binance US" />
                            )}
                            {asset.new_added_date && new Date(asset.new_added_date).getTime() > Date.now() - 86400000 && (
                              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs px-2 py-0.5">
