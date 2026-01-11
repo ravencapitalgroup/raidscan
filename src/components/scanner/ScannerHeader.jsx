@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import RefreshIntervalSelector from './RefreshIntervalSelector';
+import TimezoneSelector from './TimezoneSelector';
 
 export default function ScannerHeader({ 
   totalAssets, 
@@ -12,7 +13,9 @@ export default function ScannerHeader({
   onRefresh,
   refreshInterval,
   onRefreshIntervalChange,
-  nextRefresh
+  nextRefresh,
+  timezone,
+  onTimezoneChange
 }) {
   return (
     <div className="space-y-6 mb-8">
@@ -68,11 +71,17 @@ export default function ScannerHeader({
       </div>
       
       {/* Refresh Interval Selector */}
-      <RefreshIntervalSelector 
-        value={refreshInterval}
-        onChange={onRefreshIntervalChange}
-        nextRefresh={nextRefresh}
-      />
+      <div className="flex items-center gap-3 flex-wrap">
+        <RefreshIntervalSelector 
+          value={refreshInterval}
+          onChange={onRefreshIntervalChange}
+          nextRefresh={nextRefresh}
+        />
+        <TimezoneSelector
+          value={timezone}
+          onChange={onTimezoneChange}
+        />
+      </div>
     </div>
   );
 }

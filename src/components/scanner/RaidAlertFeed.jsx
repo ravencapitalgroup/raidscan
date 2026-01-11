@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, ArrowUpRight, ArrowDownRight, Clock, X } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { format } from 'date-fns';
+import { useScannerData } from './ScannerContext';
+import { formatTimestamp } from './formatTimestamp';
 
 export default function RaidAlertFeed({ alerts, onDismiss }) {
+  const { timezone } = useScannerData();
   if (!alerts || alerts.length === 0) {
     return (
       <div className="p-6 rounded-2xl bg-slate-900/50 border border-slate-700/50 text-center">
@@ -90,7 +92,7 @@ export default function RaidAlertFeed({ alerts, onDismiss }) {
               
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500">
-                  {format(new Date(alert.created_date), 'HH:mm:ss')}
+                  {formatTimestamp(alert.created_date, timezone)}
                 </span>
                 {onDismiss && (
                   <Button
