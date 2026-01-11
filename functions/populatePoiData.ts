@@ -9,10 +9,17 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { symbol, limit = 100 } = await req.json();
+    const { symbols } = await req.json();
+    const limit = 100;
 
-    if (!symbol || typeof symbol !== 'string') {
-      return Response.json({ error: 'symbol string is required' }, { status: 400 });
+    console.log(`Starting POI data update for all symbols`);
+
+    // Get all symbols if not provided
+    let symbolsToProcess = symbols;
+    if (!symbolsToProcess || !Array.isArray(symbolsToProcess)) {
+      const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
+      symbolsToProcess = allAssets.map(a => a.symbol);
+      console.log(`Fetched ${symbolsToProcess.length} symbols from database`);
     }
 
     const timeframes = ['1w', '1M'];
@@ -21,15 +28,13 @@ Deno.serve(async (req) => {
     // Helper function to fetch klines with fallback to Binance US
     const fetchKlines = async (sym, timeframe) => {
       const endpoints = [
-        `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`,
-        `https://api.binance.us/api/v3/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`
+        `https://fapi.binance.com/fapi/v1/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`,
+        `https://fapi.binance.us/fapi/v1/klines?symbol=${sym}&interval=${timeframe}&limit=${limit}`
       ];
 
       for (const url of endpoints) {
         try {
-          console.log(`Fetching: ${url}`);
           const response = await fetch(url);
-          console.log(`Response status: ${response.status}`);
 
           // Check for restricted location error
           if (response.status === 451) {
@@ -37,7 +42,6 @@ Deno.serve(async (req) => {
           }
 
           const data = await response.json();
-          console.log(`Data for ${sym}-${timeframe}:`, JSON.stringify(data).slice(0, 200));
 
           if (Array.isArray(data)) {
             console.log(`Got ${data.length} candles for ${sym}-${timeframe}`);
@@ -52,28 +56,36 @@ Deno.serve(async (req) => {
       return [];
     };
 
-    // Fetch klines for each timeframe
-    for (const timeframe of timeframes) {
-      const data = await fetchKlines(symbol, timeframe);
+    // Process each symbol
+    for (const symbol of symbolsToProcess) {
+      for (const timeframe of timeframes) {
+        const data = await fetchKlines(symbol, timeframe);
 
-      if (Array.isArray(data) && data.length > 0) {
-        // Transform Binance kline response to our schema
-        const candles = data.map(kline => ({
-          symbol,
-          timeframe,
-          timestamp: kline[0],
-          open: parseFloat(kline[1]),
-          high: parseFloat(kline[2]),
-          low: parseFloat(kline[3]),
-          close: parseFloat(kline[4]),
-          volume: parseFloat(kline[7]),
-          quoteAssetVolume: parseFloat(kline[7]),
-          numberOfTrades: kline[8],
-          takerBuyBaseAssetVolume: parseFloat(kline[9]),
-          takerBuyQuoteAssetVolume: parseFloat(kline[10])
-        }));
-        
-        allCandles.push(...candles);
+        if (Array.isArray(data) && data.length > 0) {
+          // Delete existing data for this symbol/timeframe
+          const existingData = await base44.asServiceRole.entities.PoiData.filter({ symbol, timeframe });
+          for (const record of existingData) {
+            await base44.asServiceRole.entities.PoiData.delete(record.id);
+          }
+
+          // Transform Binance kline response to our schema
+          const candles = data.map(kline => ({
+            symbol,
+            timeframe,
+            timestamp: kline[0],
+            open: parseFloat(kline[1]),
+            high: parseFloat(kline[2]),
+            low: parseFloat(kline[3]),
+            close: parseFloat(kline[4]),
+            volume: parseFloat(kline[7]),
+            quoteAssetVolume: parseFloat(kline[8]),
+            numberOfTrades: parseInt(kline[8]),
+            takerBuyBaseAssetVolume: parseFloat(kline[9]),
+            takerBuyQuoteAssetVolume: parseFloat(kline[10])
+          }));
+          
+          allCandles.push(...candles);
+        }
       }
     }
 
@@ -81,7 +93,6 @@ Deno.serve(async (req) => {
     let insertedCount = 0;
     if (allCandles.length > 0) {
       console.log(`Attempting to insert ${allCandles.length} candles`);
-      console.log(`First candle sample:`, JSON.stringify(allCandles[0]));
       
       try {
         const result = await base44.entities.PoiData.bulkCreate(allCandles);
@@ -95,9 +106,10 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
+      processedSymbols: symbolsToProcess.length,
       insertedCount: insertedCount,
       candlesCollected: allCandles.length,
-      message: `Inserted ${insertedCount} POI candles (weekly and monthly)`
+      message: `Updated POI data for ${symbolsToProcess.length} symbols`
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
