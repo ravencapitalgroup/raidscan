@@ -15,34 +15,32 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid symbols array' }, { status: 400 });
     }
 
-    // Fetch data from Binance API directly
-    const symbolsJson = JSON.stringify(symbols);
-    const tickersUrl = `https://fapi.binance.com/fapi/v1/ticker/24hr?symbols=${encodeURIComponent(symbolsJson)}`;
+    // Fetch data from Binance API - fetch each symbol individually for reliability
+    const prices = {};
     
-    console.log('Fetching from Binance:', tickersUrl);
-    
-    const response = await fetch(tickersUrl);
-    if (!response.ok) {
-      console.error('Binance API error:', response.status, response.statusText);
-      return Response.json({ error: `Binance API error: ${response.status}` }, { status: response.status });
+    for (const symbol of symbols) {
+      try {
+        const response = await fetch(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${symbol}`);
+        if (!response.ok) {
+          console.error(`Failed to fetch ${symbol}:`, response.status);
+          continue;
+        }
+        
+        const data = await response.json();
+        prices[data.symbol] = {
+          price: parseFloat(data.lastPrice),
+          change24h: parseFloat(data.priceChangePercent),
+          high24h: parseFloat(data.highPrice),
+          low24h: parseFloat(data.lowPrice)
+        };
+      } catch (err) {
+        console.error(`Error fetching ${symbol}:`, err.message);
+      }
     }
-    
-    const data = await response.json();
-    console.log('Binance response:', data);
 
-    if (!Array.isArray(data)) {
-      return Response.json({ error: 'Invalid response format from Binance' }, { status: 500 });
+    if (Object.keys(prices).length === 0) {
+      return Response.json({ error: 'No prices fetched' }, { status: 500 });
     }
-
-    const prices = data.reduce((acc, item) => {
-      acc[item.symbol] = {
-        price: parseFloat(item.lastPrice),
-        change24h: parseFloat(item.priceChangePercent),
-        high24h: parseFloat(item.highPrice),
-        low24h: parseFloat(item.lowPrice)
-      };
-      return acc;
-    }, {});
 
     return Response.json({ prices });
   } catch (error) {
