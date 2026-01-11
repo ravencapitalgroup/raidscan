@@ -142,19 +142,19 @@ export function ScannerProvider({ children }) {
               // Only flag as raid if price is within 2% of POI
               if (distancePercent < 2) {
                 newRaids.push({
-                  symbol: symbol,
+                  symbol: normalizedSymbol,
                   poi_type: poiType,
                   raid_direction: isHighRaid ? 'bullish' : 'bearish',
                   poi_price: data.price,
-                  raid_price: prices[symbol].price,
+                  raid_price: prices[normalizedSymbol].price,
                   timestamp: new Date().toISOString()
                 });
-              }
-            }
-          });
+                }
+                }
+                });
 
-          newAssetData[symbol] = {
-            ...prices[symbol],
+                newAssetData[normalizedSymbol] = {
+                ...prices[normalizedSymbol],
             pois,
             activeRaids: newRaids.filter(r => r.symbol === symbol)
           };
