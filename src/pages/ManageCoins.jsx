@@ -26,10 +26,22 @@ export default function ManageCoins() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const queryClient = useQueryClient();
 
-  const { data: assets = [] } = useQuery({
+  const { data: rawAssets = [] } = useQuery({
     queryKey: ['allWatchlistAssets'],
     queryFn: () => base44.entities.WatchlistAsset.list(),
   });
+
+  // Remove duplicates - keep the most recently created one for each symbol
+  const assets = rawAssets.reduce((acc, asset) => {
+    const existing = acc.find(a => a.symbol === asset.symbol);
+    if (!existing) {
+      acc.push(asset);
+    } else if (new Date(asset.created_date) > new Date(existing.created_date)) {
+      const index = acc.indexOf(existing);
+      acc[index] = asset;
+    }
+    return acc;
+  }, []);
 
   const toggleAsset = useMutation({
     mutationFn: ({ id, is_active }) => 
