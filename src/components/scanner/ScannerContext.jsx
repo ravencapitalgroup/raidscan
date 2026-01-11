@@ -108,39 +108,21 @@ export function ScannerProvider({ children }) {
       for (const symbol of symbols) {
         if (prices[symbol]) {
           // Get PoiData for this symbol from database
-          const symbolPoiData = allPoiData.filter(poi => poi.symbol === symbol);
+          const weeklyData = allPoiData.find(poi => poi.symbol === symbol && poi.timeframe === '1w');
+          const monthlyData = allPoiData.find(poi => poi.symbol === symbol && poi.timeframe === '1M');
           
-          // Build pois object from database or fallback to calculated
-          const pois = {};
-          if (symbolPoiData.length > 0) {
-            const poiTypes = ['PWH', 'PWL', 'PMH', 'PML', 'PQH', 'PQL'];
-            poiTypes.forEach(type => {
-              const poiRecord = symbolPoiData.find(p => {
-                // Check if this POI matches the type
-                if (type === 'PWH' || type === 'PWL') return p.timeframe === '1w';
-                if (type === 'PMH' || type === 'PML') return p.timeframe === '1M';
-                return false;
-              });
-              
-              if (poiRecord) {
-                pois[type] = {
-                  price: type.includes('H') ? poiRecord.high : poiRecord.low,
-                  isRaided: false,
-                  isActive: true
-                };
-              } else {
-                pois[type] = {
-                  price: 0,
-                  isRaided: false,
-                  isActive: false
-                };
-              }
-            });
-          } else {
-            // Fallback to calculated POIs if no database records
-            const calculated = calculatePOIs(symbol, prices[symbol].price);
-            Object.assign(pois, calculated);
-          }
+          // Build pois from database data
+          const pois = {
+            PWH: weeklyData ? { price: weeklyData.high, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
+            PWL: weeklyData ? { price: weeklyData.low, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
+            PMH: monthlyData ? { price: monthlyData.high, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
+            PML: monthlyData ? { price: monthlyData.low, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false }
+          };
+          
+          // Calculate quarterly POIs if not in database
+          const calculated = calculatePOIs(symbol, prices[symbol].price);
+          pois.PQH = calculated.PQH;
+          pois.PQL = calculated.PQL;
           
           Object.entries(pois).forEach(([poiType, data]) => {
             if (data.isActive && data.price > 0) {
