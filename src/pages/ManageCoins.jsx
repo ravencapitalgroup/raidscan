@@ -43,9 +43,10 @@ export default function ManageCoins() {
 
   const bulkToggle = useMutation({
     mutationFn: async (is_active) => {
-      for (const asset of assets) {
-        await base44.entities.WatchlistAsset.update(asset.id, { is_active });
-      }
+      const updates = filteredAssets.map(asset => 
+        base44.entities.WatchlistAsset.update(asset.id, { is_active })
+      );
+      await Promise.all(updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
