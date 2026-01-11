@@ -22,29 +22,29 @@ export default function StatsBar({ stats }) {
       label: 'PMH Raids',
       value: stats?.pmhRaids || 0,
       icon: TrendingUp,
-      color: 'text-purple-400',
-      bg: 'bg-purple-500/10'
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10'
     },
     {
       label: 'PML Raids',
       value: stats?.pmlRaids || 0,
       icon: TrendingDown,
-      color: 'text-pink-400',
-      bg: 'bg-pink-500/10'
+      color: 'text-rose-400',
+      bg: 'bg-rose-500/10'
     },
     {
       label: 'PQH Raids',
       value: stats?.pqhRaids || 0,
-      icon: Target,
-      color: 'text-cyan-400',
-      bg: 'bg-cyan-500/10'
+      icon: TrendingUp,
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10'
     },
     {
       label: 'PQL Raids',
       value: stats?.pqlRaids || 0,
-      icon: Zap,
-      color: 'text-amber-400',
-      bg: 'bg-amber-500/10'
+      icon: TrendingDown,
+      color: 'text-rose-400',
+      bg: 'bg-rose-500/10'
     },
   ];
   
