@@ -188,11 +188,20 @@ Deno.serve(async (req) => {
       console.error(`Error sorting PoiData: ${err.message}`);
     }
 
+    const nextStartIndex = startIndex + symbolsToProcess.length;
+    const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
+    const totalSymbols = allAssets.length;
+    const hasMoreSymbols = nextStartIndex < totalSymbols;
+
     return Response.json({
       success: !rateLimitHit,
       processedSymbols: symbolsToProcess.length,
       insertedCount: insertedCount,
       rateLimitHit: rateLimitHit,
+      nextStartIndex: nextStartIndex,
+      totalSymbols: totalSymbols,
+      hasMoreSymbols: hasMoreSymbols,
+      progress: `${nextStartIndex}/${totalSymbols} symbols processed`,
       message: rateLimitHit 
         ? `Rate limit hit. Processed up to ${insertedCount} candles. Retry in next execution.`
         : `Updated POI data for ${symbolsToProcess.length} symbols (${insertedCount} candles inserted)`
