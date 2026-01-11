@@ -76,7 +76,8 @@ import React, { useState } from 'react';
             </TableHeader>
             <TableBody>
               {filteredSymbols.map(symbol => {
-                const data = assetData[symbol];
+                const normalizedSymbol = normalizeSymbol(symbol);
+                const data = assetData[normalizedSymbol];
                 const isPositive = data?.change24h >= 0;
                 const hasRaids = data?.activeRaids?.length > 0;
 
