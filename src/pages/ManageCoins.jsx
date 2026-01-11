@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ArrowLeft, Search, ToggleLeft, ToggleRight, Coins } from 'lucide-react';
+import { ArrowLeft, Search, ToggleLeft, ToggleRight, Coins, Sparkles } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -198,18 +198,26 @@ export default function ManageCoins() {
                         {asset.symbol.replace('USDT', '').slice(0, 3)}
                       </div>
                       <div className="text-left">
-                        <p className={cn(
-                          "font-semibold tracking-tight",
-                          asset.is_active ? "text-white" : "text-slate-600"
-                        )}>
-                          {asset.symbol.replace('USDT', '')}
-                        </p>
-                        {asset.market_cap_rank && (
-                          <p className="text-xs text-slate-500">
-                            Rank #{asset.market_cap_rank}
-                          </p>
-                        )}
-                      </div>
+                         <div className="flex items-center gap-2">
+                           <p className={cn(
+                             "font-semibold tracking-tight",
+                             asset.is_active ? "text-white" : "text-slate-600"
+                           )}>
+                             {asset.symbol.replace('USDT', '')}
+                           </p>
+                           {asset.new_added_date && new Date(asset.new_added_date).getTime() > Date.now() - 86400000 && (
+                             <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs px-2 py-0.5">
+                               <Sparkles className="w-2.5 h-2.5 mr-1" />
+                               New
+                             </Badge>
+                           )}
+                         </div>
+                         {asset.market_cap_rank && (
+                           <p className="text-xs text-slate-500">
+                             Rank #{asset.market_cap_rank}
+                           </p>
+                         )}
+                       </div>
                     </div>
                     
                     {asset.is_active ? (
