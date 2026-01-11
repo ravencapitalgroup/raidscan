@@ -22,10 +22,10 @@ export default function ScannerHeader({
         <div className="relative">
           <div className={cn(
             "w-14 h-14 rounded-2xl flex items-center justify-center",
-            "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30"
+            "bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30"
           )}>
-            <Radar className={cn(
-              "w-7 h-7 text-amber-400",
+            <TrendingUp className={cn(
+              "w-7 h-7 text-emerald-400",
               isScanning && "animate-pulse"
             )} />
           </div>
