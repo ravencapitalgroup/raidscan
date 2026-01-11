@@ -127,7 +127,7 @@ export function ScannerProvider({ children }) {
               newRaids.push({
                 symbol,
                 poi_type: poiType,
-                raid_direction: isHighRaid ? 'bearish' : 'bullish',
+                raid_direction: isHighRaid ? 'bullish' : 'bearish',
                 poi_price: data.price,
                 raid_price: prices[symbol].price,
                 timestamp: new Date().toISOString()

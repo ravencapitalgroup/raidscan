@@ -10,7 +10,7 @@ const poiConfig = {
   PQL: { label: 'PQL' },
 };
 
-export default function POIBadge({ type, price, isRaided, isActive, currentPrice }) {
+export default function POIBadge({ type, price, isActive, currentPrice, dotRaidDirection }) {
   const config = poiConfig[type];
   const isHighPOI = type.includes('H');
   const proximityThreshold = 0.01; // 1% proximity
@@ -18,12 +18,12 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
   const proximityPercent = currentPrice && price ? 
     Math.abs(currentPrice - price) / price : null;
 
-  const isRaidActive = isRaided;
+  const isRaidActive = dotRaidDirection !== null;
   const isApproaching = proximityPercent !== null && proximityPercent <= proximityThreshold;
 
   const getBackgroundColor = () => {
     if (isRaidActive) {
-      return isHighPOI ? 'bg-emerald-500/30' : 'bg-rose-500/30';
+      return dotRaidDirection === 'bullish' ? 'bg-emerald-500/30' : 'bg-rose-500/30';
     }
     if (isApproaching) {
       return isHighPOI ? 'bg-emerald-500/20' : 'bg-rose-500/20';
@@ -33,7 +33,7 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
 
   const getTextColor = () => {
     if (isRaidActive) {
-      return isHighPOI ? 'text-emerald-400' : 'text-rose-400';
+      return dotRaidDirection === 'bullish' ? 'text-emerald-400' : 'text-rose-400';
     }
     if (isApproaching) {
       return isHighPOI ? 'text-emerald-300' : 'text-rose-300';
@@ -43,7 +43,7 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
 
   const getBorderColor = () => {
     if (isRaidActive) {
-      return isHighPOI ? 'border-emerald-500/50' : 'border-rose-500/50';
+      return dotRaidDirection === 'bullish' ? 'border-emerald-500/50' : 'border-rose-500/50';
     }
     if (isApproaching) {
       return isHighPOI ? 'border-emerald-500/30' : 'border-rose-500/30';
@@ -69,11 +69,11 @@ export default function POIBadge({ type, price, isRaided, isActive, currentPrice
         <span className="absolute -top-1 -right-1 flex h-3 w-3">
           <span className={cn(
             "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
-            isHighPOI ? "bg-emerald-400" : "bg-rose-400"
+            dotRaidDirection === 'bullish' ? "bg-emerald-400" : dotRaidDirection === 'bearish' ? "bg-rose-400" : "bg-slate-400"
           )} />
           <span className={cn(
             "relative inline-flex rounded-full h-3 w-3",
-            isHighPOI ? "bg-emerald-500" : "bg-rose-500"
+            dotRaidDirection === 'bullish' ? "bg-emerald-500" : dotRaidDirection === 'bearish' ? "bg-rose-500" : "bg-slate-500"
           )} />
         </span>
       )}

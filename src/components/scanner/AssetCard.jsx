@@ -72,7 +72,7 @@ export default function AssetCard({
           {!isLoading && (
             <Circle className={cn(
               "w-2 h-2 fill-current",
-              hasActiveRaid && activeRaids[0].raid_direction === 'bullish' ? "text-emerald-400 animate-pulse" : hasActiveRaid && activeRaids[0].raid_direction === 'bearish' ? "text-rose-400 animate-pulse" : "text-emerald-400"
+              hasActiveRaid && activeRaids[0].raid_direction === 'bullish' ? "text-emerald-400 animate-pulse" : hasActiveRaid && activeRaids[0].raid_direction === 'bearish' ? "text-rose-400 animate-pulse" : "text-slate-500"
             )} />
           )}
         </div>
@@ -80,16 +80,19 @@ export default function AssetCard({
       
       {/* POIs Grid */}
       <div className="grid grid-cols-2 gap-2 mb-4">
-        {pois && Object.entries(pois).map(([type, data]) => (
-          <POIBadge 
-            key={type}
-            type={type}
-            price={data.price}
-            isRaided={data.isRaided}
-            isActive={data.isActive}
-            currentPrice={price}
-          />
-        ))}
+        {pois && Object.entries(pois).map(([type, data]) => {
+          const matchingRaid = activeRaids?.find(r => r.poi_type === type);
+          return (
+            <POIBadge 
+              key={type}
+              type={type}
+              price={data.price}
+              isActive={data.isActive}
+              currentPrice={price}
+              dotRaidDirection={matchingRaid?.raid_direction || null}
+            />
+          );
+        })}
       </div>
       
       {/* Active Raids */}
