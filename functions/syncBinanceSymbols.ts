@@ -1,42 +1,36 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-// Helper to fetch with fallback to US endpoint, returns { data, endpoint }
-const fetchWithFallback = async (endpoints) => {
-  for (const url of endpoints) {
-    try {
-      const response = await fetch(url);
-      if (response.status === 451) {
-        console.log(`Endpoint ${url} restricted, trying next endpoint`);
-        continue;
-      }
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return { data: await response.json(), endpoint: url };
-    } catch (err) {
-      console.log(`Failed to fetch ${url}:`, err.message);
-      continue;
-    }
+// Helper for rate limiting
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper to fetch via proxy
+const fetchViaProxy = async (base44, endpoint, params = {}) => {
+  try {
+    const result = await base44.functions.invoke('binanceProxy', {
+      endpoint,
+      params
+    });
+    return result.data;
+  } catch (err) {
+    console.error(`Failed to fetch ${endpoint}:`, err.message);
+    throw err;
   }
-  throw new Error('All endpoints failed');
 };
 
 // Helper to fetch klines for a symbol
-const fetchKlines = async (symbol, interval, limit = 100) => {
-  const endpoints = [
-    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
-    `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-  ];
-  
+const fetchKlines = async (base44, symbol, interval, limit = 100) => {
   try {
-    const result = await fetchWithFallback(endpoints);
-    return Array.isArray(result.data) ? result.data : [];
+    const data = await fetchViaProxy(base44, '/api/v3/klines', {
+      symbol,
+      interval,
+      limit
+    });
+    return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error(`Failed to fetch klines for ${symbol}:`, err.message);
     return [];
   }
 };
-
-// Helper for rate limiting
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 Deno.serve(async (req) => {
   try {
