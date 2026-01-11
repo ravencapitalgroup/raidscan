@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import moment from 'npm:moment@2.30.1';
 
 Deno.serve(async (req) => {
   try {
@@ -27,11 +28,11 @@ Deno.serve(async (req) => {
       }
     });
 
-    // Calculate retention dates based on current time
-    const now = new Date();
-    const nineWeeksAgo = new Date(now.getTime() - 9 * 7 * 24 * 60 * 60 * 1000);
-    const sevenMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 7, now.getDate());
-    const twoQuartersAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+    // Calculate retention dates based on current time using moment.js
+    const now = moment();
+    const nineWeeksAgo = now.clone().subtract(9, 'weeks').toDate();
+    const sevenMonthsAgo = now.clone().subtract(7, 'months').toDate();
+    const twoQuartersAgo = now.clone().subtract(6, 'months').toDate();
 
     const recordsToDelete = [];
     let recordsDeleted = 0;
