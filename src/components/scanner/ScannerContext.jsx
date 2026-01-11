@@ -117,19 +117,17 @@ export function ScannerProvider({ children }) {
           // Get PoiData for this symbol from database
           const weeklyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1w');
           const monthlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1M');
+          const quarterlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1q');
 
           // Build pois from database data
           const pois = {
             PWH: weeklyData ? { price: weeklyData.high, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
             PWL: weeklyData ? { price: weeklyData.low, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
             PMH: monthlyData ? { price: monthlyData.high, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
-            PML: monthlyData ? { price: monthlyData.low, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false }
+            PML: monthlyData ? { price: monthlyData.low, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
+            PQH: quarterlyData ? { price: quarterlyData.high, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false },
+            PQL: quarterlyData ? { price: quarterlyData.low, isRaided: false, isActive: true } : { price: 0, isRaided: false, isActive: false }
           };
-
-          // Calculate quarterly POIs if not in database
-          const calculated = calculatePOIs(normalizedSymbol, prices[priceKey].price);
-          pois.PQH = calculated.PQH;
-          pois.PQL = calculated.PQL;
 
           Object.entries(pois).forEach(([poiType, data]) => {
             if (data.isActive && data.price > 0) {
