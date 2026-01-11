@@ -12,7 +12,8 @@ export default function ScannerHeader({
   onRefresh,
   refreshInterval,
   onRefreshIntervalChange,
-  nextRefresh
+  nextRefresh,
+  title = "POI Raid Scanner"
 }) {
   return (
     <div className="space-y-6 mb-8">
@@ -38,7 +39,7 @@ export default function ScannerHeader({
         
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-            POI Raid Scanner
+            {title}
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">
             Monitoring {totalAssets} altcoins for HTF liquidity sweeps
