@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
             console.warn(`Rate limited (429) for ${sym}-${timeframe}. Stopping execution to preserve API quota.`);
             throw new Error('RATE_LIMIT_HIT');
           } else {
-            backoffMs = Math.pow(2, attempt - 1) * 2000; // 2s, 4s exponential backoff
+            backoffMs = Math.pow(2, attempt - 1) * 5000; // 5s, 10s exponential backoff
             console.warn(`Attempt ${attempt}/${retries} for ${sym}-${timeframe} failed. Cooling off for ${backoffMs}ms before retry...`);
             await delay(backoffMs);
           }
