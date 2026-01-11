@@ -78,14 +78,26 @@ Deno.serve(async (req) => {
     }
 
     // Bulk insert into PoiData
+    let insertedCount = 0;
     if (allCandles.length > 0) {
-      await base44.entities.PoiData.bulkCreate(allCandles);
+      console.log(`Attempting to insert ${allCandles.length} candles`);
+      console.log(`First candle sample:`, JSON.stringify(allCandles[0]));
+      
+      try {
+        const result = await base44.entities.PoiData.bulkCreate(allCandles);
+        insertedCount = result?.length || allCandles.length;
+        console.log(`Successfully inserted ${insertedCount} candles`);
+      } catch (err) {
+        console.error(`BulkCreate error: ${err.message}`);
+        throw err;
+      }
     }
 
     return Response.json({
       success: true,
-      insertedCount: allCandles.length,
-      message: `Inserted ${allCandles.length} POI candles (weekly and monthly)`
+      insertedCount: insertedCount,
+      candlesCollected: allCandles.length,
+      message: `Inserted ${insertedCount} POI candles (weekly and monthly)`
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
