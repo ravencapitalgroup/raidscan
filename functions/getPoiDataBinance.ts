@@ -137,7 +137,8 @@ Deno.serve(async (req) => {
                 quoteAssetVolume: parseFloat(kline[8]),
                 numberOfTrades: parseInt(kline[8]),
                 takerBuyBaseAssetVolume: parseFloat(kline[9]),
-                takerBuyQuoteAssetVolume: parseFloat(kline[10])
+                takerBuyQuoteAssetVolume: parseFloat(kline[10]),
+                last_updated_date: now.toISOString()
               }));
 
               candlesForSymbol.push(...candles);
