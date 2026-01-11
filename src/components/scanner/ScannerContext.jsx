@@ -23,21 +23,36 @@ const fetchPrices = async (symbols, retries = 3) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      const result = await Promise.race([
-        base44.functions.invoke('fetchBinancePrices', { symbols: normalizedSymbols }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 10000))
+      const [binanceResult, binanceUSResult] = await Promise.all([
+        Promise.race([
+          base44.functions.invoke('fetchBinancePricesBinance', { symbols: normalizedSymbols }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Binance request timeout')), 10000))
+        ]),
+        Promise.race([
+          base44.functions.invoke('fetchBinancePricesBinanceUS', { symbols: normalizedSymbols }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Binance US request timeout')), 10000))
+        ])
       ]);
       
       clearTimeout(timeoutId);
-      console.log('Raw result from fetchBinancePrices:', result);
+      console.log('Raw result from fetchBinancePricesBinance:', binanceResult);
+      console.log('Raw result from fetchBinancePricesBinanceUS:', binanceUSResult);
 
-      // Check if result.data.prices is undefined/null to prevent 'reduce' error
-      if (!result || !result.data || !Array.isArray(result.data.prices)) {
-        console.error('Invalid or empty response from fetchBinancePrices:', result);
-        return {}; // Return empty object to prevent further errors
+      const combinedPrices = [
+        ...(binanceResult?.data?.prices || []),
+        ...(binanceUSResult?.data?.prices || [])
+      ];
+
+      if (combinedPrices.length === 0) {
+        console.error('No prices returned from either Binance or Binance US');
+        if (attempt === retries) {
+          return {};
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
+        continue;
       }
 
-      return result.data.prices.reduce((acc, item) => {
+      return combinedPrices.reduce((acc, item) => {
         if (item.error) {
           console.error(`Error fetching ${item.symbol}:`, item.error);
           return acc;
@@ -102,9 +117,9 @@ export function ScannerProvider({ children }) {
     setError(null);
 
     try {
-      console.log('Scanning markets...');
-      console.log('Watchlist symbols:', symbols);
-      const prices = await fetchPrices(symbols);
+          console.log('Scanning markets...');
+          console.log('Watchlist symbols:', symbols);
+          const prices = await fetchPrices(symbols, 3);
       console.log('Fetched prices:', prices);
 
       // Fetch PoiData from both Binance and Binance US
