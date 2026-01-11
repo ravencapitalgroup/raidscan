@@ -76,7 +76,7 @@ function LayoutContent({ children, currentPageName }) {
                 )}
               >
                 <Radar className="w-4 h-4" />
-                <span className="font-medium text-sm">Scanner</span>
+                <span className="font-medium text-sm">POI Scanner</span>
               </Link>
               
               <Link 
@@ -89,7 +89,7 @@ function LayoutContent({ children, currentPageName }) {
                 )}
               >
                 <Table className="w-4 h-4" />
-                <span className="font-medium text-sm">Coin Data</span>
+                <span className="font-medium text-sm">POI Data</span>
               </Link>
 
               <Link 
