@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
       for (const url of endpoints) {
         try {
           const response = await fetch(url);
+          await delay(2000); // 2 second pause after each API call
 
           // Check for rate limit error
           if (response.status === 429) {
@@ -60,6 +61,7 @@ Deno.serve(async (req) => {
           }
         } catch (err) {
           console.log(`Error fetching from ${url}: ${err.message}`);
+          await delay(2000); // 2 second pause after failed attempt
           continue;
         }
       }
