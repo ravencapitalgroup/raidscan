@@ -35,10 +35,17 @@ export default function ManageCoins() {
   const queryClient = useQueryClient();
   const { scanMarkets } = useScannerData();
 
-  const { data: rawAssets = [] } = useQuery({
-    queryKey: ['allWatchlistAssets'],
-    queryFn: () => base44.entities.WatchlistAsset.list(),
+  const { data: binanceAssets = [] } = useQuery({
+    queryKey: ['watchlistAssetsBinance'],
+    queryFn: () => base44.entities.WatchlistAssetBinance.list(),
   });
+
+  const { data: binanceUSAssets = [] } = useQuery({
+    queryKey: ['watchlistAssetsBinanceUS'],
+    queryFn: () => base44.entities.WatchlistAssetBinanceUS.list(),
+  });
+
+  const rawAssets = [...binanceAssets, ...binanceUSAssets];
 
   // Remove duplicates - keep the most recently created one for each symbol
   const assets = rawAssets.reduce((acc, asset) => {
@@ -53,16 +60,18 @@ export default function ManageCoins() {
   }, []);
 
   const toggleAsset = useMutation({
-    mutationFn: async ({ id, symbol, is_active }) => {
+    mutationFn: async ({ id, symbol, is_active, source }) => {
       const normalizedSymbol = normalizeSymbol(symbol);
+      const entity = source === 'binance' ? 'WatchlistAssetBinance' : 'WatchlistAssetBinanceUS';
+      
       // Update the specific asset with normalized symbol
-      await base44.entities.WatchlistAsset.update(id, { symbol: normalizedSymbol, is_active });
+      await base44.entities[entity].update(id, { symbol: normalizedSymbol, is_active });
       
       // Find and delete any duplicates of this symbol (keep the one we just updated)
-      const allAssets = await base44.entities.WatchlistAsset.list();
+      const allAssets = await base44.entities[entity].list();
       const duplicates = allAssets.filter(a => a.symbol === normalizedSymbol && a.id !== id);
       for (const dup of duplicates) {
-        await base44.entities.WatchlistAsset.delete(dup.id);
+        await base44.entities[entity].delete(dup.id);
       }
       
       // If turning on, trigger refreshes after 2 seconds
@@ -71,8 +80,6 @@ export default function ManageCoins() {
           try {
             // Refresh market prices
             await scanMarkets();
-            // Refresh POI data
-            await base44.functions.invoke('populatePoiData', { symbols: [normalizedSymbol] });
           } catch (err) {
             console.error('Error refreshing data after toggle:', err);
           }
@@ -80,8 +87,8 @@ export default function ManageCoins() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
-      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
+      queryClient.invalidateQueries({ queryKey: ['watchlistAssetsBinance'] });
+      queryClient.invalidateQueries({ queryKey: ['watchlistAssetsBinanceUS'] });
     },
   });
 
@@ -194,7 +201,7 @@ export default function ManageCoins() {
                 {categoryAssets.map((asset) => (
                   <motion.button
                     key={asset.id}
-                    onClick={() => toggleAsset.mutate({ id: asset.id, symbol: asset.symbol, is_active: !asset.is_active })}
+                    onClick={() => toggleAsset.mutate({ id: asset.id, symbol: asset.symbol, is_active: !asset.is_active, source: binanceAssets.find(a => a.id === asset.id) ? 'binance' : 'binanceus' })}
                     className={cn(
                       "flex items-center justify-between p-4 rounded-xl border transition-all",
                       "hover:scale-[1.02] active:scale-[0.98]",
