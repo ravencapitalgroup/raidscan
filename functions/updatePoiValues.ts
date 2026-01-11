@@ -11,14 +11,14 @@ Deno.serve(async (req) => {
     }
 
     const timezone = user.timezone || 'UTC';
-    
-    // Process both Binance and Binance US data
-    const processPoiData = async (entityName) => {
-      console.log(`\nProcessing ${entityName}...`);
-      
-      // Get all POI data
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Helper function to process POI data for a given entity
+    const processPoiEntity = async (entityName) => {
+      console.log(`\n=== Processing ${entityName} ===`);
+
       const allPoiData = await base44.asServiceRole.entities[entityName].list();
-      
+
       // Group by symbol
       const poiBySymbol = {};
       allPoiData.forEach(poi => {
@@ -32,7 +32,6 @@ Deno.serve(async (req) => {
         }
       });
 
-      // Calculate retention dates based on current time using moment.js
       const now = moment();
       const nineWeeksAgo = now.clone().subtract(9, 'weeks').toDate();
       const sevenMonthsAgo = now.clone().subtract(7, 'months').toDate();
@@ -40,9 +39,8 @@ Deno.serve(async (req) => {
       const recordsToDelete = [];
       let recordsDeleted = 0;
 
-      // Process each symbol
+      // Clean up old data
       for (const [symbol, poiData] of Object.entries(poiBySymbol)) {
-        // Clean up weekly data - keep only last 9 weeks
         poiData.weekly.forEach(poi => {
           const poiDate = new Date(poi.timestamp);
           if (poiDate < nineWeeksAgo) {
@@ -50,7 +48,6 @@ Deno.serve(async (req) => {
           }
         });
 
-        // Clean up monthly data - keep only last 7 months
         poiData.monthly.forEach(poi => {
           const poiDate = new Date(poi.timestamp);
           if (poiDate < sevenMonthsAgo) {
@@ -68,21 +65,20 @@ Deno.serve(async (req) => {
               await base44.asServiceRole.entities[entityName].delete(id);
               recordsDeleted++;
             } catch (err) {
-              console.error(`Failed to delete POI record ${id}:`, err.message);
+              console.error(`Failed to delete record ${id}:`, err.message);
             }
           }
         }
       }
 
-      console.log(`Deleted ${recordsDeleted} old POI records from ${entityName}`);
+      console.log(`Deleted ${recordsDeleted} old records from ${entityName}`);
 
-      // Calculate quarterly data from past 3 calendar months
+      // Calculate quarterly data
       let quarterlyRecordsCreated = 0;
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
 
-      // Get the last 3 calendar months
       const monthsForQuarterly = [];
       for (let i = 0; i < 3; i++) {
         const monthDate = new Date(currentYear, currentMonth - i, 1);
@@ -100,19 +96,16 @@ Deno.serve(async (req) => {
 
       // Calculate quarterly POI for each symbol
       for (const [symbol, poiData] of Object.entries(poiBySymbol)) {
-        // Get all monthly data for this symbol
         const monthlyDataForSymbol = poiData.monthly;
 
-        // Filter data from the last 3 calendar months
         const quarterlyData = monthlyDataForSymbol.filter(poi => {
           const poiDate = new Date(poi.timestamp);
-          return monthsForQuarterly.some(m => 
+          return monthsForQuarterly.some(m =>
             poiDate.getFullYear() === m.year && poiDate.getMonth() === m.month
           );
         });
 
         if (quarterlyData.length > 0) {
-          // Calculate high and low from the 3 months of data
           const quarterlyHigh = Math.max(...quarterlyData.map(d => d.high));
           const quarterlyLow = Math.min(...quarterlyData.map(d => d.low));
           const quarterlyOpen = quarterlyData[0]?.open || 0;
@@ -120,7 +113,6 @@ Deno.serve(async (req) => {
           const quarterlyVolume = quarterlyData.reduce((sum, d) => sum + d.volume, 0);
           const quarterlyQuoteVolume = quarterlyData.reduce((sum, d) => sum + d.quoteAssetVolume, 0);
 
-          // Create timestamp for start of the current quarter
           const quarterStartDate = new Date(currentYear, Math.floor(currentMonth / 3) * 3, 1);
           const quarterTimestamp = quarterStartDate.getTime();
 
@@ -147,19 +139,19 @@ Deno.serve(async (req) => {
         }
       }
 
-      console.log(`Created ${quarterlyRecordsCreated} quarterly POI records for ${entityName}`);
-      
+      console.log(`Created ${quarterlyRecordsCreated} quarterly records for ${entityName}`);
       return { recordsDeleted, quarterlyRecordsCreated };
     };
 
     // Process both entities
-    const binanceResult = await processPoiData('PoiDataBinance');
-    const binanceUSResult = await processPoiData('PoiDataBinanceUS');
+    const binanceResults = await processPoiEntity('PoiDataBinance');
+    await delay(500);
+    const binanceUSResults = await processPoiEntity('PoiDataBinanceUS');
 
     return Response.json({
       success: true,
-      binance: binanceResult,
-      binanceUS: binanceUSResult,
+      binance: binanceResults,
+      binanceUS: binanceUSResults,
       message: `Successfully processed POI data for both Binance and Binance US`
     });
   } catch (error) {
