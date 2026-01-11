@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
 
     console.log(`Starting POI data update for Binance US`);
 
-    const binanceUSAssets = await base44.asServiceRole.entities.WatchlistAssetBinanceUS.list();
+    const binanceUSAssets = await base44.asServiceRole.entities.WatchlistAsset.filter({ source: 'binanceus' });
     console.log(`Fetched ${binanceUSAssets.length} Binance US symbols`);
 
     const timeframes = ['1w', '1M'];
