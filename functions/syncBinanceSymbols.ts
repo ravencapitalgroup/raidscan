@@ -44,50 +44,23 @@ Deno.serve(async (req) => {
     // Fetch from Spot via proxy
     const spotData = await fetchViaProxy(base44, '/api/v3/exchangeInfo', {});
     
-    // Combine symbols from both, tracking which are futures/spot
-    const symbolMap = new Map();
-    
     // Process spot symbols
+    const symbols = [];
     if (spotData.symbols) {
       for (const s of spotData.symbols) {
         if (s.status === 'TRADING' && s.quoteAsset === 'USDT') {
-          symbolMap.set(s.symbol, {
+          symbols.push({
             symbol: s.symbol,
             category: 'Other',
             is_active: false,
             new_added_date: new Date().toISOString(),
-            source: [spotSource],
+            source: ['binance'],
             is_spot: true,
             is_futures: false
           });
         }
       }
     }
-    
-    // Process futures symbols, merge with existing spot entries
-    if (futuresData.symbols) {
-      for (const s of futuresData.symbols) {
-        if (s.status === 'TRADING' && s.symbol.endsWith('USDT')) {
-          if (symbolMap.has(s.symbol)) {
-            const existing = symbolMap.get(s.symbol);
-            existing.is_futures = true;
-            existing.source = [...new Set([...existing.source, futuresSource])];
-          } else {
-            symbolMap.set(s.symbol, {
-              symbol: s.symbol,
-              category: 'Other',
-              is_active: false,
-              new_added_date: new Date().toISOString(),
-              source: [futuresSource],
-              is_spot: false,
-              is_futures: true
-            });
-          }
-        }
-      }
-    }
-
-    const symbols = Array.from(symbolMap.values());
 
     console.log(`Fetched ${symbols.length} trading symbols from Binance`);
 
