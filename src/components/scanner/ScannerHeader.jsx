@@ -30,10 +30,10 @@ export default function ScannerHeader({
             )} />
           </div>
           {isScanning && (
-           <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-             <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500" />
-           </span>
+            <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500" />
+            </span>
           )}
         </div>
         
