@@ -33,6 +33,7 @@ export default function ManageCoins() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const queryClient = useQueryClient();
+  const { scanMarkets } = useScannerData();
 
   const { data: rawAssets = [] } = useQuery({
     queryKey: ['allWatchlistAssets'],
