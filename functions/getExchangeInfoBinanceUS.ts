@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
 
     console.log(`Total Binance US symbols: ${usSpotSymbols.length}`);
 
-    // Get existing symbols
-    const existingAssets = await base44.asServiceRole.entities.WatchlistAssetBinanceUS.list();
+    // Get existing symbols from consolidated entity
+    const existingAssets = await base44.asServiceRole.entities.WatchlistAsset.filter({ source: 'binanceus' });
     const existingSymbols = new Set(existingAssets.map(a => a.symbol));
 
     // Find new symbols to add
@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
       // Bulk create new assets
       const assetsToCreate = newSymbols.map(s => ({
         symbol: s.symbol,
+        source: 'binanceus',
         is_active: true,
         category: 'Other',
         is_futures: false,
@@ -50,7 +51,7 @@ Deno.serve(async (req) => {
       const batchSize = 100;
       for (let i = 0; i < assetsToCreate.length; i += batchSize) {
         const batch = assetsToCreate.slice(i, i + batchSize);
-        await base44.asServiceRole.entities.WatchlistAssetBinanceUS.bulkCreate(batch);
+        await base44.asServiceRole.entities.WatchlistAsset.bulkCreate(batch);
         console.log(`Created ${batch.length} assets`);
         if (i + batchSize < assetsToCreate.length) {
           await delay(500);
@@ -62,7 +63,7 @@ Deno.serve(async (req) => {
     const currentSymbolSet = new Set(usSpotSymbols.map(s => s.symbol));
     for (const asset of existingAssets) {
       if (!currentSymbolSet.has(asset.symbol) && asset.is_active) {
-        await base44.asServiceRole.entities.WatchlistAssetBinanceUS.update(asset.id, { is_active: false });
+        await base44.asServiceRole.entities.WatchlistAsset.update(asset.id, { is_active: false });
       }
     }
 

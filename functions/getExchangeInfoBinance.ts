@@ -65,18 +65,19 @@ Deno.serve(async (req) => {
     const allBinanceSymbols = Array.from(symbolMap.values());
     console.log(`Total unique Binance symbols: ${allBinanceSymbols.length}`);
 
-    // Get existing symbols
-    const existingAssets = await base44.asServiceRole.entities.WatchlistAssetBinance.list();
-    const existingSymbols = new Set(existingAssets.map(a => a.symbol));
+    // Get existing symbols from consolidated entity
+    const existingAssets = await base44.asServiceRole.entities.WatchlistAsset.filter({ source: 'binance' });
+    const existingMap = new Map(existingAssets.map(a => [`${a.symbol}-${a.is_futures}`, a]));
 
     // Find new symbols to add
-    const newSymbols = allBinanceSymbols.filter(s => !existingSymbols.has(s.symbol));
+    const newSymbols = allBinanceSymbols.filter(s => !existingMap.has(`${s.symbol}-${s.is_futures}`));
     console.log(`New symbols to add: ${newSymbols.length}`);
 
     if (newSymbols.length > 0) {
       // Bulk create new assets
       const assetsToCreate = newSymbols.map(s => ({
         symbol: s.symbol,
+        source: 'binance',
         is_active: true,
         category: 'Other',
         is_futures: s.is_futures,
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
       const batchSize = 100;
       for (let i = 0; i < assetsToCreate.length; i += batchSize) {
         const batch = assetsToCreate.slice(i, i + batchSize);
-        await base44.asServiceRole.entities.WatchlistAssetBinance.bulkCreate(batch);
+        await base44.asServiceRole.entities.WatchlistAsset.bulkCreate(batch);
         console.log(`Created ${batch.length} assets`);
         if (i + batchSize < assetsToCreate.length) {
           await delay(500);
@@ -96,20 +97,19 @@ Deno.serve(async (req) => {
 
     // Update existing symbols with new futures/spot status
     for (const asset of existingAssets) {
-      const updated = allBinanceSymbols.find(s => s.symbol === asset.symbol);
-      if (updated && (asset.is_futures !== updated.is_futures || asset.is_spot !== updated.is_spot)) {
-        await base44.asServiceRole.entities.WatchlistAssetBinance.update(asset.id, {
-          is_futures: updated.is_futures,
+      const updated = allBinanceSymbols.find(s => s.symbol === asset.symbol && s.is_futures === asset.is_futures);
+      if (updated && (asset.is_spot !== updated.is_spot)) {
+        await base44.asServiceRole.entities.WatchlistAsset.update(asset.id, {
           is_spot: updated.is_spot
         });
       }
     }
 
     // Mark symbols no longer on exchange as inactive
-    const currentSymbolSet = new Set(allBinanceSymbols.map(s => s.symbol));
+    const currentSymbolSet = new Set(allBinanceSymbols.map(s => `${s.symbol}-${s.is_futures}`));
     for (const asset of existingAssets) {
-      if (!currentSymbolSet.has(asset.symbol) && asset.is_active) {
-        await base44.asServiceRole.entities.WatchlistAssetBinance.update(asset.id, { is_active: false });
+      if (!currentSymbolSet.has(`${asset.symbol}-${asset.is_futures}`) && asset.is_active) {
+        await base44.asServiceRole.entities.WatchlistAsset.update(asset.id, { is_active: false });
       }
     }
 
