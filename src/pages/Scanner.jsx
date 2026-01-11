@@ -122,7 +122,7 @@ export default function Scanner() {
   });
 
   // Scan for prices and POIs
-  const scanMarkets = useCallback(async () => {
+  const scanMarkets = async () => {
     if (symbols.length === 0) return;
     
     setIsScanning(true);
@@ -176,12 +176,13 @@ export default function Scanner() {
     } finally {
       setIsScanning(false);
     }
-  }, [symbols]);
+  };
 
   // Initial scan and periodic refresh
   useEffect(() => {
     if (symbols.length === 0) {
       setIsScanning(false);
+      setAssetData({});
       return;
     }
     
@@ -194,7 +195,7 @@ export default function Scanner() {
     }, refreshInterval);
     
     return () => clearInterval(interval);
-  }, [symbols, scanMarkets, refreshInterval]);
+  }, [refreshInterval]);
   
   // Update countdown timer
   useEffect(() => {
