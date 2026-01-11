@@ -176,13 +176,21 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({
-      success: true,
+      success: !rateLimitHit,
       processedSymbols: symbolsToProcess.length,
       insertedCount: insertedCount,
-      candlesCollected: allCandles.length,
-      message: `Updated POI data for ${symbolsToProcess.length} symbols`
+      rateLimitHit: rateLimitHit,
+      message: rateLimitHit 
+        ? `Rate limit hit. Processed up to ${insertedCount} candles. Retry in next execution.`
+        : `Updated POI data for ${symbolsToProcess.length} symbols (${insertedCount} candles inserted)`
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error(`Fatal error in populatePoiData: ${error.message}`);
+    // Return 200 instead of 500 to prevent scheduler from retrying immediately
+    return Response.json({ 
+      success: false,
+      error: error.message,
+      message: 'Error during execution. Will retry in next scheduled run.'
+    }, { status: 200 });
   }
 });
