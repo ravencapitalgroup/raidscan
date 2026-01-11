@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
-
+import SymbolManager from '@/components/scanner/SymbolManager';
 
 const categoryColors = {
   'Layer 1': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -35,20 +35,6 @@ export default function ManageCoins() {
   const toggleAsset = useMutation({
     mutationFn: ({ id, is_active }) => 
       base44.entities.WatchlistAsset.update(id, { is_active }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
-      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
-    },
-  });
-
-  const bulkToggle = useMutation({
-    mutationFn: async (is_active) => {
-      // Update ALL assets, not just filtered ones
-      const updates = assets.map(asset => 
-        base44.entities.WatchlistAsset.update(asset.id, { is_active })
-      );
-      await Promise.all(updates);
-    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
       queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
@@ -102,26 +88,7 @@ export default function ManageCoins() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => bulkToggle.mutate(true)}
-                disabled={bulkToggle.isPending}
-                className="bg-slate-800/50 border-slate-700 text-emerald-400 hover:bg-emerald-500/10"
-              >
-                Select All
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => bulkToggle.mutate(false)}
-                disabled={bulkToggle.isPending}
-                className="bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50"
-              >
-                Deselect All
-              </Button>
-            </div>
+            <SymbolManager />
           </div>
 
           {/* Search & Stats */}
