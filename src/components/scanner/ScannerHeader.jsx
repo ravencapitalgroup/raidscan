@@ -3,17 +3,21 @@ import { Radar, Zap, Settings, RefreshCw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import RefreshIntervalSelector from './RefreshIntervalSelector';
 
 export default function ScannerHeader({ 
   totalAssets, 
   activeRaids, 
   isScanning, 
   onRefresh,
-  lastUpdate 
+  refreshInterval,
+  onRefreshIntervalChange,
+  nextRefresh
 }) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-      <div className="flex items-center gap-4">
+    <div className="space-y-6 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
         <div className="relative">
           <div className={cn(
             "w-14 h-14 rounded-2xl flex items-center justify-center",
@@ -50,17 +54,25 @@ export default function ScannerHeader({
           </Badge>
         )}
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRefresh}
-          disabled={isScanning}
-          className="bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50 hover:text-white"
-        >
-          <RefreshCw className={cn("w-4 h-4 mr-2", isScanning && "animate-spin")} />
-          Refresh
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isScanning}
+            className="bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50 hover:text-white"
+          >
+            <RefreshCw className={cn("w-4 h-4 mr-2", isScanning && "animate-spin")} />
+            Refresh Now
+          </Button>
+        </div>
       </div>
+      
+      {/* Refresh Interval Selector */}
+      <RefreshIntervalSelector 
+        value={refreshInterval}
+        onChange={onRefreshIntervalChange}
+        nextRefresh={nextRefresh}
+      />
     </div>
   );
 }

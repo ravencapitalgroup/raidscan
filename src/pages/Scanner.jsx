@@ -9,12 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Search, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Top Binance altcoins to scan
+// Top Binance perpetual futures to scan
 const DEFAULT_SYMBOLS = [
   'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT',
   'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 'ATOMUSDT',
   'LTCUSDT', 'UNIUSDT', 'APTUSDT', 'ARBUSDT', 'OPUSDT',
   'NEARUSDT', 'INJUSDT', 'SUIUSDT', 'SEIUSDT', 'TIAUSDT'
+];
+
+const REFRESH_INTERVALS = [
+  { label: '5 Minutes', value: 300000, shortLabel: '5m' },
+  { label: '30 Minutes', value: 1800000, shortLabel: '30m' },
+  { label: '1 Hour', value: 3600000, shortLabel: '1h' },
 ];
 
 // Simulated POI calculation (in production, this would fetch real data)
@@ -48,13 +54,13 @@ const calculatePOIs = (symbol, currentPrice) => {
   };
 };
 
-// Fetch current prices using AI with internet context
+// Fetch current perpetual futures prices from Binance using AI
 const fetchPrices = async (symbols) => {
   try {
     const symbolList = symbols.map(s => s.replace('USDT', '')).join(', ');
     
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Get the current live cryptocurrency prices and 24h price change percentages for these coins: ${symbolList}. Return ONLY the data, no explanations.`,
+      prompt: `Get the current live Binance PERPETUAL FUTURES prices (NOT spot prices) and 24h price change percentages for these trading pairs: ${symbolList}/USDT. Make sure to use Binance Futures/Perpetuals data. Return ONLY the data, no explanations.`,
       add_context_from_internet: true,
       response_json_schema: {
         type: "object",
@@ -100,6 +106,8 @@ export default function Scanner() {
   const [filterType, setFilterType] = useState('all');
   const [isScanning, setIsScanning] = useState(false);
   const [assetData, setAssetData] = useState({});
+  const [refreshInterval, setRefreshInterval] = useState(300000); // Default 5 minutes
+  const [nextRefresh, setNextRefresh] = useState(null);
   const queryClient = useQueryClient();
 
   // Fetch saved alerts
@@ -163,9 +171,23 @@ export default function Scanner() {
   // Initial scan and periodic refresh
   useEffect(() => {
     scanMarkets();
-    const interval = setInterval(scanMarkets, 30000); // Refresh every 30 seconds
+    setNextRefresh(Date.now() + refreshInterval);
+    
+    const interval = setInterval(() => {
+      scanMarkets();
+      setNextRefresh(Date.now() + refreshInterval);
+    }, refreshInterval);
+    
     return () => clearInterval(interval);
-  }, [scanMarkets]);
+  }, [scanMarkets, refreshInterval]);
+  
+  // Update countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNextRefresh(prev => prev ? prev : Date.now() + refreshInterval);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [refreshInterval]);
 
   // Filter assets
   const filteredSymbols = DEFAULT_SYMBOLS.filter(symbol => {
@@ -197,7 +219,13 @@ export default function Scanner() {
           totalAssets={DEFAULT_SYMBOLS.length}
           activeRaids={totalActiveRaids}
           isScanning={isScanning}
-          onRefresh={scanMarkets}
+          onRefresh={() => {
+            scanMarkets();
+            setNextRefresh(Date.now() + refreshInterval);
+          }}
+          refreshInterval={refreshInterval}
+          onRefreshIntervalChange={setRefreshInterval}
+          nextRefresh={nextRefresh}
         />
         
         <StatsBar stats={stats} />
