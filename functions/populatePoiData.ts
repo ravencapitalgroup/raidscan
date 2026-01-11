@@ -9,18 +9,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { symbols } = await req.json();
+    const { symbols, startIndex = 0 } = await req.json();
     const limit = 10;
+    const batchSize = 10; // Process 10 symbols per execution
 
-    console.log(`Starting POI data update for all symbols`);
+    console.log(`Starting POI data update (startIndex: ${startIndex})`);
 
     // Get all symbols if not provided
     let symbolsToProcess = symbols;
     if (!symbolsToProcess || !Array.isArray(symbolsToProcess)) {
       const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
       symbolsToProcess = allAssets.map(a => a.symbol);
-      console.log(`Fetched ${symbolsToProcess.length} symbols from database`);
-      console.log(`Processing ${symbolsToProcess.length} symbols in this batch`);
+      console.log(`Fetched ${symbolsToProcess.length} total symbols from database`);
+      
+      // Process only batch of symbols starting from startIndex
+      symbolsToProcess = symbolsToProcess.slice(startIndex, startIndex + batchSize);
+      console.log(`Processing ${symbolsToProcess.length} symbols in this batch (indices ${startIndex}-${startIndex + symbolsToProcess.length - 1})`);
     }
 
     const timeframes = ['1w', '1M'];
