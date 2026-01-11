@@ -21,8 +21,8 @@ Deno.serve(async (req) => {
       symbolsToProcess = allAssets.map(a => a.symbol);
       console.log(`Fetched ${symbolsToProcess.length} symbols from database`);
       
-      // Process only first 25 symbols per execution to avoid rate limits
-      symbolsToProcess = symbolsToProcess.slice(0, 25);
+      // Process only first 10 symbols per execution to avoid rate limits
+      symbolsToProcess = symbolsToProcess.slice(0, 10);
       console.log(`Processing ${symbolsToProcess.length} symbols in this batch`);
     }
 
