@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     };
 
     // Fetch klines with retry logic and 429 handling
-    const fetchKlinesWithRetry = async (sym, timeframe, retries = 3) => {
+    const fetchKlinesWithRetry = async (sym, timeframe, retries = 2) => {
       for (let attempt = 1; attempt <= retries; attempt++) {
         const { data, success, rateLimited } = await fetchKlinesInternal(sym, timeframe);
         if (success) {
@@ -77,13 +77,14 @@ Deno.serve(async (req) => {
         if (attempt < retries) {
           let backoffMs;
           if (rateLimited) {
-            backoffMs = 62000; // 62 second backoff for 429 errors
-            console.warn(`Rate limited (429) for ${sym}-${timeframe}. Cooling off for 62s before retry (attempt ${attempt}/${retries})...`);
+            // Aggressive backoff for rate limiting - exit on first 429
+            console.warn(`Rate limited (429) for ${sym}-${timeframe}. Stopping execution to preserve API quota.`);
+            throw new Error('RATE_LIMIT_HIT');
           } else {
-            backoffMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s exponential backoff
+            backoffMs = Math.pow(2, attempt - 1) * 2000; // 2s, 4s exponential backoff
             console.warn(`Attempt ${attempt}/${retries} for ${sym}-${timeframe} failed. Cooling off for ${backoffMs}ms before retry...`);
+            await delay(backoffMs);
           }
-          await delay(backoffMs);
         }
       }
 
