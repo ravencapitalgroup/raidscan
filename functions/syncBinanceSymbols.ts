@@ -46,8 +46,7 @@ Deno.serve(async (req) => {
 
     // Fetch from both Futures and Spot
     const { data: futuresData, endpoint: futuresEndpoint } = await fetchWithFallback([
-      'https://fapi.binance.com/fapi/v1/exchangeInfo',
-      'https://api.binance.us/fapi/v1/exchangeInfo'
+      'https://fapi.binance.com/fapi/v1/exchangeInfo'
     ]).catch(() => ({ data: { symbols: [] }, endpoint: '' }));
 
     const { data: spotData, endpoint: spotEndpoint } = await fetchWithFallback([
