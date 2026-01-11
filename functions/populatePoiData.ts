@@ -9,23 +9,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { symbols, startIndex = 0 } = await req.json();
     const limit = 10;
-    const batchSize = 10; // Process 10 symbols per execution
+    const batchSize = 20; // Process 20 symbols per batch
+    const cooldownMs = 60000; // 1 minute cooldown between batches
 
-    console.log(`Starting POI data update (startIndex: ${startIndex})`);
+    console.log(`Starting POI data update for all symbols`);
 
-    // Get all symbols if not provided
-    let symbolsToProcess = symbols;
-    if (!symbolsToProcess || !Array.isArray(symbolsToProcess)) {
-      const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
-      symbolsToProcess = allAssets.map(a => a.symbol);
-      console.log(`Fetched ${symbolsToProcess.length} total symbols from database`);
-      
-      // Process only batch of symbols starting from startIndex
-      symbolsToProcess = symbolsToProcess.slice(startIndex, startIndex + batchSize);
-      console.log(`Processing ${symbolsToProcess.length} symbols in this batch (indices ${startIndex}-${startIndex + symbolsToProcess.length - 1})`);
-    }
+    // Get all symbols
+    const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
+    const allSymbols = allAssets.map(a => a.symbol);
+    console.log(`Fetched ${allSymbols.length} total symbols from database`);
+
+    // Calculate number of batches
+    const numBatches = Math.ceil(allSymbols.length / batchSize);
+    console.log(`Will process ${numBatches} batches of ${batchSize} symbols each`);
+
+    let totalInserted = 0;
+    let rateLimitHit = false;
 
     const timeframes = ['1w', '1M'];
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
