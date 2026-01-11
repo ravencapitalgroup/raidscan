@@ -93,105 +93,116 @@ Deno.serve(async (req) => {
       return [];
     };
 
-    let insertedCount = 0;
-    let rateLimitHit = false;
+    // Process batches with cooldown between each
+    for (let batchIndex = 0; batchIndex < numBatches; batchIndex++) {
+      if (rateLimitHit) break;
 
-    // Process each symbol with rate limiting
-    for (let i = 0; i < symbolsToProcess.length; i++) {
-      const symbol = symbolsToProcess[i];
-      const candlesForSymbol = [];
+      const startIdx = batchIndex * batchSize;
+      const endIdx = Math.min(startIdx + batchSize, allSymbols.length);
+      const symbolsInBatch = allSymbols.slice(startIdx, endIdx);
 
-      try {
-        for (const timeframe of timeframes) {
-          const data = await fetchKlinesWithRetry(symbol, timeframe);
+      console.log(`\n=== Processing Batch ${batchIndex + 1}/${numBatches} (symbols ${startIdx + 1}-${endIdx}) ===`);
 
-          if (Array.isArray(data) && data.length > 0) {
-            // Delete existing data for this symbol/timeframe in batches
-            const existingData = await base44.asServiceRole.entities.PoiData.filter({ symbol, timeframe });
-            for (let j = 0; j < existingData.length; j += 50) {
-              const batch = existingData.slice(j, j + 50);
-              for (const record of batch) {
-                await base44.asServiceRole.entities.PoiData.delete(record.id);
+      // Process each symbol in the batch
+      for (let i = 0; i < symbolsInBatch.length; i++) {
+        if (rateLimitHit) break;
+
+        const symbol = symbolsInBatch[i];
+        const candlesForSymbol = [];
+
+        try {
+          for (const timeframe of timeframes) {
+            const data = await fetchKlinesWithRetry(symbol, timeframe);
+
+            if (Array.isArray(data) && data.length > 0) {
+              // Delete existing data for this symbol/timeframe in batches
+              const existingData = await base44.asServiceRole.entities.PoiData.filter({ symbol, timeframe });
+              for (let j = 0; j < existingData.length; j += 50) {
+                const batch = existingData.slice(j, j + 50);
+                for (const record of batch) {
+                  await base44.asServiceRole.entities.PoiData.delete(record.id);
+                }
+                if (j + 50 < existingData.length) {
+                  await delay(100); // Delay between delete batches
+                }
               }
-              if (j + 50 < existingData.length) {
-                await delay(100); // Delay between delete batches
+
+              // Transform Binance kline response to our schema
+              const candles = data.map(kline => ({
+                symbol,
+                timeframe,
+                timestamp: kline[0],
+                open: parseFloat(kline[1]),
+                high: parseFloat(kline[2]),
+                low: parseFloat(kline[3]),
+                close: parseFloat(kline[4]),
+                volume: parseFloat(kline[7]),
+                quoteAssetVolume: parseFloat(kline[8]),
+                numberOfTrades: parseInt(kline[8]),
+                takerBuyBaseAssetVolume: parseFloat(kline[9]),
+                takerBuyQuoteAssetVolume: parseFloat(kline[10])
+              }));
+              
+              candlesForSymbol.push(...candles);
+            }
+
+            // Delay between timeframe requests
+            if (timeframes.indexOf(timeframe) < timeframes.length - 1) {
+              await delay(1500);
+            }
+          }
+
+          // Bulk insert candles for this symbol in smaller batches
+          if (candlesForSymbol.length > 0) {
+            const insertBatchSize = 100;
+            for (let j = 0; j < candlesForSymbol.length; j += insertBatchSize) {
+              const batch = candlesForSymbol.slice(j, j + insertBatchSize);
+              try {
+                const result = await base44.asServiceRole.entities.PoiData.bulkCreate(batch);
+                totalInserted += result?.length || batch.length;
+                console.log(`Inserted ${batch.length} candles for ${symbol}`);
+              } catch (err) {
+                console.error(`BulkCreate error for ${symbol}: ${err.message}`);
+              }
+              
+              if (j + insertBatchSize < candlesForSymbol.length) {
+                await delay(200);
               }
             }
-
-            // Transform Binance kline response to our schema
-            const candles = data.map(kline => ({
-              symbol,
-              timeframe,
-              timestamp: kline[0],
-              open: parseFloat(kline[1]),
-              high: parseFloat(kline[2]),
-              low: parseFloat(kline[3]),
-              close: parseFloat(kline[4]),
-              volume: parseFloat(kline[7]),
-              quoteAssetVolume: parseFloat(kline[8]),
-              numberOfTrades: parseInt(kline[8]),
-              takerBuyBaseAssetVolume: parseFloat(kline[9]),
-              takerBuyQuoteAssetVolume: parseFloat(kline[10])
-            }));
-            
-            candlesForSymbol.push(...candles);
           }
 
-          // Delay between timeframe requests
-          if (timeframes.indexOf(timeframe) < timeframes.length - 1) {
-            await delay(1500);
+          // Delay between symbols within batch to avoid rate limiting
+          if (i < symbolsInBatch.length - 1) {
+            await delay(3000);
           }
-        }
-
-        // Bulk insert candles for this symbol in smaller batches
-        if (candlesForSymbol.length > 0) {
-          const insertBatchSize = 100;
-          for (let j = 0; j < candlesForSymbol.length; j += insertBatchSize) {
-            const batch = candlesForSymbol.slice(j, j + insertBatchSize);
-            try {
-              const result = await base44.asServiceRole.entities.PoiData.bulkCreate(batch);
-              insertedCount += result?.length || batch.length;
-              console.log(`Inserted ${batch.length} candles for ${symbol}`);
-            } catch (err) {
-              console.error(`BulkCreate error for ${symbol}: ${err.message}`);
-            }
-            
-            if (j + insertBatchSize < candlesForSymbol.length) {
-              await delay(200);
-            }
+        } catch (err) {
+          if (err.message === 'RATE_LIMIT_HIT') {
+            console.error(`Rate limit hit while processing ${symbol}. Stopping execution.`);
+            rateLimitHit = true;
+            break;
           }
+          console.error(`Error processing ${symbol}: ${err.message}`);
         }
+      }
 
-        // Delay between symbols to avoid rate limiting
-        if (i < symbolsToProcess.length - 1) {
-          await delay(3000);
-        }
-      } catch (err) {
-        if (err.message === 'RATE_LIMIT_HIT') {
-          console.error(`Rate limit hit while processing ${symbol}. Stopping execution.`);
-          rateLimitHit = true;
-          break;
-        }
-        console.error(`Error processing ${symbol}: ${err.message}`);
+      // Cooldown between batches (except after the last batch)
+      if (batchIndex < numBatches - 1 && !rateLimitHit) {
+        console.log(`Batch ${batchIndex + 1} complete. Cooling down for 1 minute before next batch...`);
+        await delay(cooldownMs);
       }
     }
 
     // Sort all PoiData by timestamp (earliest to oldest)
-    console.log('Sorting all PoiData records by timestamp...');
+    console.log('\nSorting all PoiData records by timestamp...');
     try {
-      const allPoiData = await base44.asServiceRole.entities.PoiData.list();
-      if (allPoiData.length > 0) {
-        const sorted = allPoiData.sort((a, b) => a.timestamp - b.timestamp);
+      const allPoiDataFinal = await base44.asServiceRole.entities.PoiData.list();
+      if (allPoiDataFinal.length > 0) {
+        const sorted = allPoiDataFinal.sort((a, b) => a.timestamp - b.timestamp);
         console.log(`Sorted ${sorted.length} PoiData records from earliest to oldest`);
       }
     } catch (err) {
       console.error(`Error sorting PoiData: ${err.message}`);
     }
-
-    const nextStartIndex = startIndex + symbolsToProcess.length;
-    const allAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
-    const totalSymbols = allAssets.length;
-    const hasMoreSymbols = nextStartIndex < totalSymbols;
 
     return Response.json({
       success: !rateLimitHit,
