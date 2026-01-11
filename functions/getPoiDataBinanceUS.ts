@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
 
     const limit = 10;
     const batchSize = 20;
-    const cooldownMs = 60000;
+    const cooldownMs = 30000;
 
     console.log(`Starting POI data update for Binance US`);
 
