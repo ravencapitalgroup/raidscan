@@ -158,16 +158,36 @@ export default function ManageCoins() {
               />
             </div>
             
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/50 border border-slate-700/50">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-sm text-slate-300 font-medium">{activeCount} Active</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/50 border border-slate-700/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-sm text-slate-300 font-medium">{activeCount} Active</span>
+                </div>
+                <span className="text-slate-600">•</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-slate-600" />
+                  <span className="text-sm text-slate-500">{assets.length - activeCount} Inactive</span>
+                </div>
               </div>
-              <span className="text-slate-600">•</span>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-slate-600" />
-                <span className="text-sm text-slate-500">{assets.length - activeCount} Inactive</span>
-              </div>
+              <Button
+                onClick={() => selectAllAssets.mutate()}
+                disabled={selectAllAssets.isPending}
+                variant="outline"
+                size="sm"
+                className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+              >
+                Select All
+              </Button>
+              <Button
+                onClick={() => deselectAllAssets.mutate()}
+                disabled={deselectAllAssets.isPending}
+                variant="outline"
+                size="sm"
+                className="bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+              >
+                Deselect All
+              </Button>
             </div>
           </div>
 
