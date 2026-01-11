@@ -15,29 +15,46 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'symbols array is required' }, { status: 400 });
     }
 
+    // Helper function to fetch from Binance with fallback to Binance US
+    const fetchWithFallback = async (symbol) => {
+      const endpoints = [
+        `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`,
+        `https://api.binance.us/api/v3/ticker/24hr?symbol=${symbol}`
+      ];
+
+      for (const url of endpoints) {
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+
+          // Check for restricted location error
+          if (data.code === -1022 || response.status === 451) {
+            continue; // Try next endpoint
+          }
+
+          if (data.code) {
+            return { symbol, error: data.msg || 'Failed to fetch price' };
+          }
+
+          return {
+            symbol: data.symbol,
+            lastPrice: parseFloat(data.lastPrice),
+            priceChangePercent: parseFloat(data.priceChangePercent),
+            volume: parseFloat(data.volume),
+            quoteAssetVolume: parseFloat(data.quoteAssetVolume)
+          };
+        } catch (err) {
+          // Continue to next endpoint on error
+          continue;
+        }
+      }
+
+      return { symbol, error: 'Failed to fetch from all endpoints' };
+    };
+
     // Fetch 24hr ticker data from Binance for each symbol
     const prices = await Promise.all(
-      symbols.map(async (symbol) => {
-        const url = `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`;
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.code) {
-          // Error from Binance
-          return {
-            symbol,
-            error: data.msg || 'Failed to fetch price'
-          };
-        }
-
-        return {
-          symbol: data.symbol,
-          lastPrice: parseFloat(data.lastPrice),
-          priceChangePercent: parseFloat(data.priceChangePercent),
-          volume: parseFloat(data.volume),
-          quoteAssetVolume: parseFloat(data.quoteAssetVolume)
-        };
-      })
+      symbols.map(symbol => fetchWithFallback(symbol))
     );
 
     return Response.json({ prices });
