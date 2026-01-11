@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
-import SymbolManager from '@/components/scanner/SymbolManager';
 
 const categoryColors = {
   'Layer 1': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -43,13 +42,15 @@ export default function ManageCoins() {
 
   const categories = ['all', ...Object.keys(categoryColors)];
   
-  const filteredAssets = assets.filter(asset => {
-    const matchesSearch = asset.symbol.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || asset.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const sortedAndFilteredAssets = assets
+    .filter(asset => {
+      const matchesSearch = asset.symbol.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || asset.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-  const groupedAssets = filteredAssets.reduce((acc, asset) => {
+  const groupedAssets = sortedAndFilteredAssets.reduce((acc, asset) => {
     const cat = asset.category || 'Other';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(asset);
@@ -65,30 +66,26 @@ export default function ManageCoins() {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex flex-col gap-6 mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link to={createPageUrl('Scanner')}>
+              <Button variant="outline" size="icon" className="bg-slate-800/50 border-slate-700 text-slate-300">
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            </Link>
+            
             <div className="flex items-center gap-4">
-              <Link to={createPageUrl('Scanner')}>
-                <Button variant="outline" size="icon" className="bg-slate-800/50 border-slate-700 text-slate-300">
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              </Link>
-              
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30">
-                  <Coins className="w-7 h-7 text-cyan-400" />
-                </div>
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-                    Manage Coins
-                  </h1>
-                  <p className="text-slate-400 text-sm mt-0.5">
-                    {activeCount} of {assets.length} coins active
-                  </p>
-                </div>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30">
+                <Coins className="w-7 h-7 text-cyan-400" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                  Manage Coins
+                </h1>
+                <p className="text-slate-400 text-sm mt-0.5">
+                  {activeCount} of {assets.length} coins active
+                </p>
               </div>
             </div>
-            
-            <SymbolManager />
           </div>
 
           {/* Search & Stats */}
@@ -198,7 +195,7 @@ export default function ManageCoins() {
           ))}
         </div>
 
-        {filteredAssets.length === 0 && (
+        {sortedAndFilteredAssets.length === 0 && (
           <div className="text-center py-16">
             <Coins className="w-16 h-16 text-slate-600 mx-auto mb-4" />
             <p className="text-slate-400">No coins found</p>

@@ -1,9 +1,6 @@
 import React, { useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from "@/components/ui/button";
-import { RefreshCcw, CheckCircle } from 'lucide-react';
-import { cn } from "@/lib/utils";
 
 export default function SymbolManager({ onUpdate }) {
   const queryClient = useQueryClient();
@@ -58,7 +55,7 @@ export default function SymbolManager({ onUpdate }) {
         await base44.entities.WatchlistAsset.bulkCreate(
           categorized.coins.map(c => ({ 
             symbol: c.symbol, 
-            is_active: true,
+            is_active: ['BTCUSDT', 'SOLUSDT', 'ETHUSDT'].includes(c.symbol),
             category: c.category 
           }))
         );
@@ -81,50 +78,18 @@ export default function SymbolManager({ onUpdate }) {
     },
   });
   
-  // Auto-update on mount if no symbols exist or it's been more than 24 hours
+  // Auto-update on mount if no symbols exist
   useEffect(() => {
     const checkAndUpdate = async () => {
       const existing = await base44.entities.WatchlistAsset.list();
-      const lastUpdate = localStorage.getItem('symbols_last_update');
-      const now = Date.now();
-      const dayInMs = 24 * 60 * 60 * 1000;
       
-      if (existing.length === 0 || !lastUpdate || (now - parseInt(lastUpdate)) > dayInMs) {
+      if (existing.length === 0) {
         updateSymbols.mutate();
-        localStorage.setItem('symbols_last_update', now.toString());
       }
     };
     
     checkAndUpdate();
   }, []);
   
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => {
-        updateSymbols.mutate();
-        localStorage.setItem('symbols_last_update', Date.now().toString());
-      }}
-      disabled={updateSymbols.isPending}
-      className="bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50 hover:text-white"
-    >
-      {updateSymbols.isPending ? (
-        <>
-          <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
-          Updating...
-        </>
-      ) : updateSymbols.isSuccess ? (
-        <>
-          <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
-          Updated
-        </>
-      ) : (
-        <>
-          <RefreshCcw className="w-4 h-4 mr-2" />
-          Update Symbols
-        </>
-      )}
-    </Button>
-  );
+  return null;
 }
