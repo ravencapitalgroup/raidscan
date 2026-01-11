@@ -4,10 +4,79 @@ import { useQuery } from '@tanstack/react-query';
 
 const ScannerContext = createContext();
 
-// Fetch prices from Binance API
+// Simulated POI calculation
+const calculatePOIs = (symbol, currentPrice) => {
+  const variance = currentPrice * 0.05;
+  const weeklyVariance = currentPrice * 0.08;
+  const monthlyVariance = currentPrice * 0.12;
+  const quarterlyVariance = currentPrice * 0.15;
+  
+  return {
+    PWH: { 
+      price: currentPrice + weeklyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.85,
+      isActive: Math.random() > 0.9
+    },
+    PWL: { 
+      price: currentPrice - weeklyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.85,
+      isActive: Math.random() > 0.9
+    },
+    PMH: { 
+      price: currentPrice + monthlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.88,
+      isActive: Math.random() > 0.92
+    },
+    PML: { 
+      price: currentPrice - monthlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.88,
+      isActive: Math.random() > 0.92
+    },
+    PQH: { 
+      price: currentPrice + quarterlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.92,
+      isActive: Math.random() > 0.95
+    },
+    PQL: { 
+      price: currentPrice - quarterlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.92,
+      isActive: Math.random() > 0.95
+    },
+  };
+};
+
+// Fetch prices from Binance
 const fetchPrices = async (symbols) => {
-  const response = await base44.functions.invoke('fetchCryptoData', { symbols });
-  return response.data.prices;
+  const symbolList = symbols.map(s => s.replace('USDT', '')).join(', ');
+  
+  const result = await base44.integrations.Core.InvokeLLM({
+    prompt: `Get the current live Binance PERPETUAL FUTURES prices (NOT spot prices) and 24h price change percentages for these trading pairs: ${symbolList}/USDT. Make sure to use Binance Futures/Perpetuals data. Return ONLY the data, no explanations.`,
+    add_context_from_internet: true,
+    response_json_schema: {
+      type: "object",
+      properties: {
+        prices: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              symbol: { type: "string", description: "Symbol with USDT suffix, e.g. BTCUSDT" },
+              price: { type: "number" },
+              change24h: { type: "number", description: "24h percentage change" }
+            }
+          }
+        }
+      }
+    }
+  });
+  
+  return result.prices.reduce((acc, item) => {
+    acc[item.symbol] = {
+      price: item.price,
+      change24h: item.change24h
+    };
+    return acc;
+  }, {});
 };
 
 export function ScannerProvider({ children }) {
@@ -21,11 +90,6 @@ export function ScannerProvider({ children }) {
   const { data: rawWatchlistAssets = [] } = useQuery({
     queryKey: ['watchlistAssets'],
     queryFn: () => base44.entities.WatchlistAsset.filter({ is_active: true }),
-  });
-
-  const { data: trackedPOIs = [] } = useQuery({
-    queryKey: ['trackedPOIs'],
-    queryFn: () => base44.entities.TrackedPOI.list(),
   });
 
   const watchlistAssets = rawWatchlistAssets.reduce((acc, asset) => {
@@ -55,39 +119,22 @@ export function ScannerProvider({ children }) {
       
       for (const symbol of symbols) {
         if (prices[symbol]) {
-          const symbolPOIs = trackedPOIs.filter(p => p.symbol === symbol);
-          const pois = {};
-          const proximityThreshold = 0.01; // 1% proximity threshold
-
-          symbolPOIs.forEach(poi => {
-            const proximityPercent = Math.abs(prices[symbol].price - poi.price) / poi.price;
-            const isRaided = proximityPercent <= proximityThreshold;
-
-            pois[poi.poi_type] = {
-              price: poi.price,
-              isRaided,
-              isActive: true
-            };
-
-            if (isRaided) {
-              const isHighRaid = poi.poi_type.includes('H');
+          const pois = calculatePOIs(symbol, prices[symbol].price);
+          
+          Object.entries(pois).forEach(([poiType, data]) => {
+            if (data.isActive) {
+              const isHighRaid = poiType.includes('H');
               newRaids.push({
                 symbol,
-                poi_type: poi.poi_type,
+                poi_type: poiType,
                 raid_direction: isHighRaid ? 'bullish' : 'bearish',
-                poi_price: poi.price,
+                poi_price: data.price,
                 raid_price: prices[symbol].price,
                 timestamp: new Date().toISOString()
               });
-
-              // Update POI status in database
-              base44.entities.TrackedPOI.update(poi.id, {
-                status: 'raided',
-                last_raid_date: new Date().toISOString()
-              }).catch(err => console.error('Error updating POI:', err));
             }
           });
-
+          
           newAssetData[symbol] = {
             ...prices[symbol],
             pois,
