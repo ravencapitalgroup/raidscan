@@ -84,10 +84,10 @@ Deno.serve(async (req) => {
       console.log(`Fetching historic data for ${newSymbols.length} new symbols`);
       for (let i = 0; i < newSymbols.length; i++) {
         const newAsset = newSymbols[i];
-        const weeklyKlines = await fetchKlines(newAsset.symbol, '1w', 100);
+        const weeklyKlines = await fetchKlines(base44, newAsset.symbol, '1w', 100);
         await delay(500); // Rate limit between API calls
         
-        const monthlyKlines = await fetchKlines(newAsset.symbol, '1M', 100);
+        const monthlyKlines = await fetchKlines(base44, newAsset.symbol, '1M', 100);
         await delay(500); // Rate limit between API calls
         
         const poiData = [];
