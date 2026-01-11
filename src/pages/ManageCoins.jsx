@@ -283,8 +283,8 @@ export default function ManageCoins() {
           </div>
         )}
       </div>
-      </div>
+        </div>
       </div>
       </>
-      );
+    );
       }
