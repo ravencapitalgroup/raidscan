@@ -128,7 +128,9 @@ export function ScannerProvider({ children }) {
 
       for (const symbol of symbols) {
         const normalizedSymbol = normalizeSymbol(symbol);
-        if (prices[normalizedSymbol]) {
+        // Try normalized symbol first, then try without USDT as fallback
+        const priceKey = prices[normalizedSymbol] ? normalizedSymbol : normalizedSymbol.replace('USDT', '');
+        if (prices[priceKey]) {
           // Get PoiData for this symbol from database
           const weeklyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1w');
           const monthlyData = allPoiData.find(poi => poi.symbol === normalizedSymbol && poi.timeframe === '1M');
