@@ -61,38 +61,25 @@ export default function ManageCoins() {
     },
   });
 
-  const updateAssetWithRetry = async (assetId, isActive, maxRetries = 3) => {
-    let lastError;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        await base44.entities.WatchlistAsset.update(assetId, { is_active: isActive });
-        return;
-      } catch (err) {
-        lastError = err;
-        const status = err.response?.status;
-        
-        // If 429 (rate limit), use exponential backoff
-        if (status === 429) {
-          const delayMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        } else if (attempt < maxRetries) {
-          // Other errors: shorter backoff
-          await new Promise(resolve => setTimeout(resolve, 500 * attempt));
-        }
-      }
-    }
-    throw lastError;
-  };
-
   const toggleAllAssets = useMutation({
     mutationFn: async () => {
       const shouldActivate = activeCount < assets.length / 2;
-      const delayBetweenUpdates = 200; // 200ms between each asset
+      const batchSize = 3; // Update 3 assets at a time
+      const delayBetweenBatches = 3000; // 3 seconds between batches
       
-      for (const asset of assets) {
-        await updateAssetWithRetry(asset.id, shouldActivate);
-        // Delay before next update to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, delayBetweenUpdates));
+      for (let i = 0; i < assets.length; i += batchSize) {
+        const batch = assets.slice(i, i + batchSize);
+        
+        // Process batch sequentially with 500ms delay between each
+        for (const asset of batch) {
+          await base44.entities.WatchlistAsset.update(asset.id, { is_active: shouldActivate });
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Wait between batches to prevent rate limiting
+        if (i + batchSize < assets.length) {
+          await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+        }
       }
     },
     onSuccess: () => {
