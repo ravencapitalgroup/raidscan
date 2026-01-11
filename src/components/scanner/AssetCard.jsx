@@ -23,12 +23,16 @@ export default function AssetCard({
       className={cn(
         "relative group p-5 rounded-2xl border backdrop-blur-sm transition-all duration-500",
         "bg-slate-900/50 border-slate-700/50 hover:border-slate-600/50",
-        hasActiveRaid && "border-amber-500/30 shadow-lg shadow-amber-500/5"
+        hasActiveRaid && activeRaids[0].raid_direction === 'bullish' && "border-emerald-500/50 border-2 shadow-lg shadow-emerald-500/10",
+        hasActiveRaid && activeRaids[0].raid_direction === 'bearish' && "border-rose-500/50 border-2 shadow-lg shadow-rose-500/10"
       )}
     >
       {/* Active raid glow */}
       {hasActiveRaid && (
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500/5 via-transparent to-amber-500/5 animate-pulse" />
+        <div className={cn(
+          "absolute inset-0 rounded-2xl animate-pulse",
+          activeRaids[0].raid_direction === 'bullish' ? "bg-gradient-to-r from-emerald-500/5 via-transparent to-emerald-500/5" : "bg-gradient-to-r from-rose-500/5 via-transparent to-rose-500/5"
+        )} />
       )}
       
       {/* Header */}
@@ -68,7 +72,7 @@ export default function AssetCard({
           {!isLoading && (
             <Circle className={cn(
               "w-2 h-2 fill-current",
-              hasActiveRaid ? "text-amber-400 animate-pulse" : "text-emerald-400"
+              hasActiveRaid && activeRaids[0].raid_direction === 'bullish' ? "text-emerald-400 animate-pulse" : hasActiveRaid && activeRaids[0].raid_direction === 'bearish' ? "text-rose-400 animate-pulse" : "text-emerald-400"
             )} />
           )}
         </div>
