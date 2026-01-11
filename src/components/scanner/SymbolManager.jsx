@@ -55,7 +55,7 @@ export default function SymbolManager({ onUpdate }) {
         await base44.entities.WatchlistAsset.bulkCreate(
           categorized.coins.map(c => ({ 
             symbol: c.symbol, 
-            is_active: ['BTCUSDT', 'SOLUSDT', 'ETHUSDT'].includes(c.symbol),
+            is_active: c.symbol === 'BTCUSDT',
             category: c.category 
           }))
         );
