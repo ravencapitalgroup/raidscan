@@ -130,14 +130,14 @@ export function ScannerProvider({ children }) {
           };
 
           // Calculate quarterly POIs if not in database
-          const calculated = calculatePOIs(symbol, prices[symbol].price);
+          const calculated = calculatePOIs(normalizedSymbol, prices[normalizedSymbol].price);
           pois.PQH = calculated.PQH;
           pois.PQL = calculated.PQL;
 
           Object.entries(pois).forEach(([poiType, data]) => {
             if (data.isActive && data.price > 0) {
               const isHighRaid = poiType.includes('H');
-              const distancePercent = Math.abs((prices[symbol].price - data.price) / data.price) * 100;
+              const distancePercent = Math.abs((prices[normalizedSymbol].price - data.price) / data.price) * 100;
 
               // Only flag as raid if price is within 2% of POI
               if (distancePercent < 2) {
