@@ -25,11 +25,11 @@ const fetchPrices = async (symbols, retries = 3) => {
       
       const [binanceResult, binanceUSResult] = await Promise.all([
         Promise.race([
-          base44.functions.invoke('fetchBinancePricesBinance', { symbols: normalizedSymbols }),
+          base44.functions.invoke('fetchPricesBinance', { symbols: normalizedSymbols }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Binance request timeout')), 10000))
         ]),
         Promise.race([
-          base44.functions.invoke('fetchBinancePricesBinanceUS', { symbols: normalizedSymbols }),
+          base44.functions.invoke('fetchPricesBinanceUS', { symbols: normalizedSymbols }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Binance US request timeout')), 10000))
         ])
       ]);
