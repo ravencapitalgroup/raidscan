@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-// Helper to fetch with fallback to US endpoint
+// Helper to fetch with fallback to US endpoint, returns { data, endpoint }
 const fetchWithFallback = async (endpoints) => {
   for (const url of endpoints) {
     try {
@@ -10,7 +10,7 @@ const fetchWithFallback = async (endpoints) => {
         continue;
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
+      return { data: await response.json(), endpoint: url };
     } catch (err) {
       console.log(`Failed to fetch ${url}:`, err.message);
       continue;
