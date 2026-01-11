@@ -22,11 +22,15 @@ Deno.serve(async (req) => {
     for (const symbol of symbols) {
       for (const timeframe of timeframes) {
         const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=${limit}`;
+        console.log(`Fetching: ${url}`);
         
         const response = await fetch(url);
+        console.log(`Response status: ${response.status}`);
         const data = await response.json();
+        console.log(`Data for ${symbol}-${timeframe}:`, JSON.stringify(data).slice(0, 200));
 
         if (Array.isArray(data)) {
+          console.log(`Got ${data.length} candles for ${symbol}-${timeframe}`);
           // Transform Binance kline response to our schema
           const candles = data.map(kline => ({
             symbol,
