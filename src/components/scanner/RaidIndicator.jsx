@@ -2,9 +2,13 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useScannerData } from './ScannerContext';
+import { formatTimestamp } from './formatTimestamp';
 
 export default function RaidIndicator({ type, direction, timestamp }) {
   const isBullish = direction === 'bullish';
+  const { timezone } = useScannerData();
+  const formattedTime = formatTimestamp(timestamp, timezone);
   
   return (
     <motion.div
@@ -35,7 +39,7 @@ export default function RaidIndicator({ type, direction, timestamp }) {
           )}
         </div>
         <span className="text-[10px] opacity-60">
-          {timestamp}
+          {formattedTime}
         </span>
       </div>
     </motion.div>
