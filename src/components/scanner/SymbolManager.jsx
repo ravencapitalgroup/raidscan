@@ -31,11 +31,36 @@ export default function SymbolManager({ onUpdate }) {
       const existing = await base44.entities.WatchlistAsset.list();
       const existingSymbols = existing.map(e => e.symbol);
       
-      // Add new symbols
+      // Categorize and add new symbols
       const toAdd = newSymbols.filter(s => !existingSymbols.includes(s));
       if (toAdd.length > 0) {
+        // Get categories for new symbols
+        const categorized = await base44.integrations.Core.InvokeLLM({
+          prompt: `Categorize these crypto coins into: Layer 1, Layer 2, DeFi, AI, Gaming, Meme, Infrastructure, or Other. Return in the exact format: ${toAdd.join(', ')}`,
+          add_context_from_internet: true,
+          response_json_schema: {
+            type: "object",
+            properties: {
+              coins: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    symbol: { type: "string" },
+                    category: { type: "string" }
+                  }
+                }
+              }
+            }
+          }
+        });
+        
         await base44.entities.WatchlistAsset.bulkCreate(
-          toAdd.map(symbol => ({ symbol, is_active: true }))
+          categorized.coins.map(c => ({ 
+            symbol: c.symbol, 
+            is_active: true,
+            category: c.category 
+          }))
         );
       }
       
