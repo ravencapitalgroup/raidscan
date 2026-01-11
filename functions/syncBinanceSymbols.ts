@@ -116,15 +116,22 @@ Deno.serve(async (req) => {
     
     console.log(`Found ${newSymbols.length} new symbols to add`);
 
+    let poiRecordsAdded = 0;
+
     // Bulk create new assets
     if (newSymbols.length > 0) {
       await base44.asServiceRole.entities.WatchlistAsset.bulkCreate(newSymbols);
+      await delay(2000); // Rate limit between operations
       
       // Fetch historic POI data for new symbols
       console.log(`Fetching historic data for ${newSymbols.length} new symbols`);
-      for (const newAsset of newSymbols) {
+      for (let i = 0; i < newSymbols.length; i++) {
+        const newAsset = newSymbols[i];
         const weeklyKlines = await fetchKlines(newAsset.symbol, '1w', 100);
+        await delay(500); // Rate limit between API calls
+        
         const monthlyKlines = await fetchKlines(newAsset.symbol, '1M', 100);
+        await delay(500); // Rate limit between API calls
         
         const poiData = [];
         
@@ -170,28 +177,19 @@ Deno.serve(async (req) => {
         
         if (poiData.length > 0) {
           await base44.asServiceRole.entities.PoiData.bulkCreate(poiData);
+          poiRecordsAdded += poiData.length;
           console.log(`Added ${poiData.length} POI records for ${newAsset.symbol}`);
+          await delay(1000); // Rate limit between bulk creates
         }
       }
-    }
-
-    // Update existing symbols with new futures/spot flags
-    if (symbolsToUpdate.length > 0) {
-      for (const update of symbolsToUpdate) {
-        await base44.asServiceRole.entities.WatchlistAsset.update(update.id, {
-          is_futures: update.is_futures,
-          is_spot: update.is_spot
-        });
-      }
-      console.log(`Updated ${symbolsToUpdate.length} symbols with futures/spot flags`);
     }
 
     return Response.json({
       success: true,
       totalSymbols: symbols.length,
       newSymbolsAdded: newSymbols.length,
-      symbolsUpdated: symbolsToUpdate.length,
-      message: `Synced ${symbols.length} symbols, added ${newSymbols.length} new ones with historic data, updated ${symbolsToUpdate.length}`
+      poiRecordsAdded,
+      message: `Synced ${symbols.length} symbols, added ${newSymbols.length} new with ${poiRecordsAdded} POI records`
     });
   } catch (error) {
     console.error('Sync error:', error);
