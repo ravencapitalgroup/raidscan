@@ -88,6 +88,7 @@ export default function ManageCoins() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
+      queryClient.refetchQueries({ queryKey: ['watchlistAssets'] });
     },
   });
 
