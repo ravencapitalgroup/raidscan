@@ -151,6 +151,7 @@ export function ScannerProvider({ children }) {
         }
       }
       
+      console.log('AssetData populated:', newAssetData);
       setAssetData(newAssetData);
     } catch (err) {
       console.error('Scan error:', err);
