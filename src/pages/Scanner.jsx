@@ -186,16 +186,18 @@ export default function Scanner() {
       return;
     }
     
+    // Initial scan
     scanMarkets();
     setNextRefresh(Date.now() + refreshInterval);
     
+    // Set up periodic refresh based on selected interval
     const interval = setInterval(() => {
       scanMarkets();
       setNextRefresh(Date.now() + refreshInterval);
     }, refreshInterval);
     
     return () => clearInterval(interval);
-  }, [refreshInterval]);
+  }, [symbols.length, refreshInterval]);
   
   // Update countdown timer
   useEffect(() => {
