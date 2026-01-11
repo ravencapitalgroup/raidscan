@@ -57,6 +57,14 @@ const normalizeSymbol = (symbol) => {
 const fetchPrices = async (symbols) => {
   const normalizedSymbols = symbols.map(normalizeSymbol);
   const result = await base44.functions.invoke('fetchBinancePrices', { symbols: normalizedSymbols });
+  
+  console.log('Raw result from fetchBinancePrices:', result);
+
+  // Check if result or result.prices is undefined/null to prevent 'reduce' error
+  if (!result || !Array.isArray(result.prices)) {
+    console.error('Invalid or empty response from fetchBinancePrices:', result);
+    return {}; // Return empty object to prevent further errors
+  }
 
   return result.prices.reduce((acc, item) => {
     if (item.error) {
@@ -106,10 +114,14 @@ export function ScannerProvider({ children }) {
     setError(null);
 
     try {
+      console.log('Scanning markets...');
+      console.log('Watchlist symbols:', symbols);
       const prices = await fetchPrices(symbols);
+      console.log('Fetched prices:', prices);
 
       // Fetch PoiData from database for all symbols
       const allPoiData = await base44.entities.PoiData.list();
+      console.log('Fetched all PoiData (' + allPoiData.length + ' records)');
 
       const newAssetData = {};
       const newRaids = [];
@@ -149,15 +161,15 @@ export function ScannerProvider({ children }) {
                   raid_price: prices[normalizedSymbol].price,
                   timestamp: new Date().toISOString()
                 });
-                }
-                }
-                });
+              }
+            }
+          });
 
-                newAssetData[normalizedSymbol] = {
-                  ...prices[normalizedSymbol],
-                  pois,
-                  activeRaids: newRaids.filter(r => r.symbol === normalizedSymbol)
-                };
+          newAssetData[normalizedSymbol] = {
+            ...prices[normalizedSymbol],
+            pois,
+            activeRaids: newRaids.filter(r => r.symbol === normalizedSymbol)
+          };
         }
       }
       
