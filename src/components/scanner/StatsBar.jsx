@@ -29,8 +29,8 @@ export default function StatsBar({ stats }) {
       label: 'PML Raids',
       value: stats?.pmlRaids || 0,
       icon: TrendingDown,
-      color: 'text-purple-400',
-      bg: 'bg-purple-500/10'
+      color: 'text-pink-400',
+      bg: 'bg-pink-500/10'
     },
     {
       label: 'PQH Raids',

@@ -152,7 +152,7 @@ export default function CoinData() {
                       {data?.pois?.PML ? (
                         <span className={cn(
                           "font-mono text-sm",
-                          data.pois.PML.isActive ? "text-purple-400 font-semibold" : "text-slate-400"
+                          data.pois.PML.isActive ? "text-pink-400 font-semibold" : "text-slate-400"
                         )}>
                           ${data.pois.PML.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
