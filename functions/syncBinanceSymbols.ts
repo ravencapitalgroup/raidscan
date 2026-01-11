@@ -25,9 +25,9 @@ const fetchKlines = async (symbol, interval, limit = 100) => {
     `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
     `https://api.binance.us/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
   ];
-  
+
   try {
-    const data = await fetchWithFallback(endpoints);
+    const { data } = await fetchWithFallback(endpoints);
     return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error(`Failed to fetch klines for ${symbol}:`, err.message);
@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
     ]);
     
     const source = endpoint.includes('binance.us') ? 'binanceus' : 'binance';
+    console.log(`Using endpoint: ${endpoint}, source: ${source}`);
     
     if (!exchangeData.symbols || exchangeData.symbols.length === 0) {
       throw new Error('Invalid exchange info response');
@@ -67,6 +68,7 @@ Deno.serve(async (req) => {
       }));
 
     console.log(`Fetched ${symbols.length} trading symbols from Binance`);
+    console.log(`Sample symbol with source:`, symbols[0]);
 
     // Get existing symbols
     const existingAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
