@@ -4,25 +4,79 @@ import { useQuery } from '@tanstack/react-query';
 
 const ScannerContext = createContext();
 
-// Fetch POI values from database for a symbol
-const fetchPOIsFromDatabase = async (symbol) => {
-  const pois = await base44.entities.POIHistory.filter({ symbol, status: 'active' });
+// Simulated POI calculation
+const calculatePOIs = (symbol, currentPrice) => {
+  const variance = currentPrice * 0.05;
+  const weeklyVariance = currentPrice * 0.08;
+  const monthlyVariance = currentPrice * 0.12;
+  const quarterlyVariance = currentPrice * 0.15;
   
-  const result = {};
-  pois.forEach(poi => {
-    result[poi.poi_type] = {
-      price: poi.price,
-      isActive: true
-    };
-  });
-  
-  return result;
+  return {
+    PWH: { 
+      price: currentPrice + weeklyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.85,
+      isActive: Math.random() > 0.9
+    },
+    PWL: { 
+      price: currentPrice - weeklyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.85,
+      isActive: Math.random() > 0.9
+    },
+    PMH: { 
+      price: currentPrice + monthlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.88,
+      isActive: Math.random() > 0.92
+    },
+    PML: { 
+      price: currentPrice - monthlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.88,
+      isActive: Math.random() > 0.92
+    },
+    PQH: { 
+      price: currentPrice + quarterlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.92,
+      isActive: Math.random() > 0.95
+    },
+    PQL: { 
+      price: currentPrice - quarterlyVariance * (0.5 + Math.random() * 0.5),
+      isRaided: Math.random() > 0.92,
+      isActive: Math.random() > 0.95
+    },
+  };
 };
 
-// Fetch prices and market data from Binance
-const fetchBinanceData = async (symbols) => {
-  const response = await base44.functions.invoke('fetchBinanceData', { symbols });
-  return response.data;
+// Fetch prices from Binance
+const fetchPrices = async (symbols) => {
+  const symbolList = symbols.map(s => s.replace('USDT', '')).join(', ');
+  
+  const result = await base44.integrations.Core.InvokeLLM({
+    prompt: `Get the current live Binance PERPETUAL FUTURES prices (NOT spot prices) and 24h price change percentages for these trading pairs: ${symbolList}/USDT. Make sure to use Binance Futures/Perpetuals data. Return ONLY the data, no explanations.`,
+    add_context_from_internet: true,
+    response_json_schema: {
+      type: "object",
+      properties: {
+        prices: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              symbol: { type: "string", description: "Symbol with USDT suffix, e.g. BTCUSDT" },
+              price: { type: "number" },
+              change24h: { type: "number", description: "24h percentage change" }
+            }
+          }
+        }
+      }
+    }
+  });
+  
+  return result.prices.reduce((acc, item) => {
+    acc[item.symbol] = {
+      price: item.price,
+      change24h: item.change24h
+    };
+    return acc;
+  }, {});
 };
 
 export function ScannerProvider({ children }) {
@@ -53,67 +107,53 @@ export function ScannerProvider({ children }) {
 
   const scanMarkets = async () => {
     if (symbols.length === 0) return;
-
+    
     setIsScanning(true);
     setError(null);
-
+    
     try {
-      const binanceData = await fetchBinanceData(symbols);
-
+      const prices = await fetchPrices(symbols);
+      
       const newAssetData = {};
       const newRaids = [];
-
+      
       for (const symbol of symbols) {
-        if (binanceData[symbol] && !binanceData[symbol].error) {
-          const data = binanceData[symbol];
-          const pois = await fetchPOIsFromDatabase(symbol);
-
-          Object.entries(pois).forEach(([poiType, poiData]) => {
-            const currentPrice = data.price;
-            const poiPrice = poiData.price;
-            const isHighPOI = poiType.includes('H');
-
-            // Check if price breaches the POI
-            let raidDirection = null;
-            if (isHighPOI && currentPrice > poiPrice) {
-              raidDirection = 'bullish';
-            } else if (!isHighPOI && currentPrice < poiPrice) {
-              raidDirection = 'bearish';
-            }
-
-            if (raidDirection) {
+        if (prices[symbol]) {
+          const pois = calculatePOIs(symbol, prices[symbol].price);
+          
+          Object.entries(pois).forEach(([poiType, data]) => {
+            if (data.isActive) {
+              const isHighRaid = poiType.includes('H');
               newRaids.push({
                 symbol,
                 poi_type: poiType,
-                raid_direction: raidDirection,
-                poi_price: poiPrice,
-                raid_price: currentPrice,
+                raid_direction: isHighRaid ? 'bullish' : 'bearish',
+                poi_price: data.price,
+                raid_price: prices[symbol].price,
                 timestamp: new Date().toISOString()
               });
             }
           });
-
+          
           newAssetData[symbol] = {
-            price: data.price,
-            change24h: data.change24h,
-            volume24h: data.volume24h,
+            ...prices[symbol],
             pois,
             activeRaids: newRaids.filter(r => r.symbol === symbol)
           };
         }
       }
-
+      
       setAssetData(newAssetData);
     } catch (err) {
       console.error('Scan error:', err);
       const errorMessage = err.message || err.toString();
-
+      
       if (errorMessage.includes('Rate limit')) {
         setError('Rate limit reached. Please wait before refreshing again.');
       } else if (errorMessage.includes('502')) {
         setError('Server temporarily unavailable. Will retry automatically.');
       } else {
-        setError('Failed to fetch market data. Will retry automatically.');
+        setError('Failed to fetch prices. Will retry automatically.');
       }
     } finally {
       setIsScanning(false);
