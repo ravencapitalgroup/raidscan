@@ -42,7 +42,7 @@ export default function ScannerHeader({
             {title}
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">
-            Monitoring {totalAssets} altcoins for HTF liquidity sweeps
+            Monitoring {totalAssets} coins for HTF liquidity sweeps
           </p>
         </div>
       </div>
