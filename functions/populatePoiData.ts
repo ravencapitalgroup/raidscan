@@ -41,6 +41,11 @@ Deno.serve(async (req) => {
         try {
           const response = await fetch(url);
 
+          // Check for rate limit error
+          if (response.status === 429) {
+            return { data: [], success: false, rateLimited: true };
+          }
+
           // Check for restricted location error
           if (response.status === 451) {
             continue; // Try next endpoint
@@ -58,20 +63,26 @@ Deno.serve(async (req) => {
         }
       }
 
-      return { data: [], success: false };
+      return { data: [], success: false, rateLimited: false };
     };
 
-    // Fetch klines with retry logic and exponential backoff
+    // Fetch klines with retry logic and 429 handling
     const fetchKlinesWithRetry = async (sym, timeframe, retries = 3) => {
       for (let attempt = 1; attempt <= retries; attempt++) {
-        const { data, success } = await fetchKlinesInternal(sym, timeframe);
+        const { data, success, rateLimited } = await fetchKlinesInternal(sym, timeframe);
         if (success) {
           return data;
         }
 
         if (attempt < retries) {
-          const backoffMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s exponential backoff
-          console.warn(`Attempt ${attempt}/${retries} for ${sym}-${timeframe} failed. Cooling off for ${backoffMs}ms before retry...`);
+          let backoffMs;
+          if (rateLimited) {
+            backoffMs = 62000; // 62 second backoff for 429 errors
+            console.warn(`Rate limited (429) for ${sym}-${timeframe}. Cooling off for 62s before retry (attempt ${attempt}/${retries})...`);
+          } else {
+            backoffMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s exponential backoff
+            console.warn(`Attempt ${attempt}/${retries} for ${sym}-${timeframe} failed. Cooling off for ${backoffMs}ms before retry...`);
+          }
           await delay(backoffMs);
         }
       }
