@@ -10,60 +10,61 @@ export default function SymbolManager({ onUpdate }) {
   
   const updateSymbols = useMutation({
     mutationFn: async () => {
-      // Fetch all Binance perpetual futures symbols and CoinGecko data
+      // Fetch all Binance perpetual futures symbols
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Search CoinGecko for ALL cryptocurrency coins that have Binance perpetual futures trading pairs. For each coin, get: symbol (in USDT format like BTCUSDT), category (Layer 1, Layer 2, DeFi, AI, Gaming, Meme, Infrastructure, or Other), and market_cap_rank. Include at least 100 top coins that trade on Binance Futures.`,
+        prompt: `Get a comprehensive list of ALL active perpetual futures trading pairs on Binance (USDT-margined futures only). Include all major altcoins. Return ONLY the symbols in the format like BTCUSDT, ETHUSDT, etc. Include at least 50+ actively traded pairs.`,
         add_context_from_internet: true,
         response_json_schema: {
           type: "object",
           properties: {
-            coins: {
+            symbols: {
               type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  symbol: { type: "string" },
-                  category: { type: "string" },
-                  market_cap_rank: { type: "number" }
-                }
-              }
+              items: { type: "string" }
             }
           }
         }
       });
       
-      const newCoins = result.coins || [];
+      const newSymbols = result.symbols || [];
       
       // Get existing symbols from database
       const existing = await base44.entities.WatchlistAsset.list();
       const existingSymbols = existing.map(e => e.symbol);
       
-      // Add new symbols
-      const toAdd = newCoins.filter(c => !existingSymbols.includes(c.symbol));
+      // Categorize and add new symbols
+      const toAdd = newSymbols.filter(s => !existingSymbols.includes(s));
       if (toAdd.length > 0) {
+        // Get categories for new symbols
+        const categorized = await base44.integrations.Core.InvokeLLM({
+          prompt: `Categorize these crypto coins into: Layer 1, Layer 2, DeFi, AI, Gaming, Meme, Infrastructure, or Other. Return in the exact format: ${toAdd.join(', ')}`,
+          add_context_from_internet: true,
+          response_json_schema: {
+            type: "object",
+            properties: {
+              coins: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    symbol: { type: "string" },
+                    category: { type: "string" }
+                  }
+                }
+              }
+            }
+          }
+        });
+        
         await base44.entities.WatchlistAsset.bulkCreate(
-          toAdd.map(c => ({ 
+          categorized.coins.map(c => ({ 
             symbol: c.symbol, 
             is_active: true,
-            category: c.category,
-            market_cap_rank: c.market_cap_rank
+            category: c.category 
           }))
         );
       }
       
-      // Update existing with CoinGecko data
-      for (const coin of newCoins) {
-        const asset = existing.find(e => e.symbol === coin.symbol);
-        if (asset) {
-          await base44.entities.WatchlistAsset.update(asset.id, {
-            category: coin.category,
-            market_cap_rank: coin.market_cap_rank
-          });
-        }
-      }
-      
-      // Mark removed symbols as inactive
-      const newSymbols = newCoins.map(c => c.symbol);
+      // Mark removed symbols as inactive (don't delete, keep historical data)
       const toDeactivate = existingSymbols.filter(s => !newSymbols.includes(s));
       for (const symbol of toDeactivate) {
         const asset = existing.find(e => e.symbol === symbol);
@@ -72,28 +73,25 @@ export default function SymbolManager({ onUpdate }) {
         }
       }
       
-      return { added: toAdd.length, updated: newCoins.length - toAdd.length, deactivated: toDeactivate.length };
+      return { added: toAdd.length, deactivated: toDeactivate.length, total: newSymbols.length };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
-      queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
       if (onUpdate) onUpdate(data);
-      localStorage.setItem('coingecko_last_scan', Date.now().toString());
     },
   });
   
-  // Auto-update once per day
+  // Auto-update on mount if no symbols exist or it's been more than 24 hours
   useEffect(() => {
     const checkAndUpdate = async () => {
-      const lastScan = localStorage.getItem('coingecko_last_scan');
+      const existing = await base44.entities.WatchlistAsset.list();
+      const lastUpdate = localStorage.getItem('symbols_last_update');
       const now = Date.now();
       const dayInMs = 24 * 60 * 60 * 1000;
       
-      if (!lastScan || (now - parseInt(lastScan)) > dayInMs) {
-        const existing = await base44.entities.WatchlistAsset.list();
-        if (existing.length === 0 || (now - parseInt(lastScan)) > dayInMs) {
-          updateSymbols.mutate();
-        }
+      if (existing.length === 0 || !lastUpdate || (now - parseInt(lastUpdate)) > dayInMs) {
+        updateSymbols.mutate();
+        localStorage.setItem('symbols_last_update', now.toString());
       }
     };
     
@@ -104,24 +102,27 @@ export default function SymbolManager({ onUpdate }) {
     <Button
       variant="outline"
       size="sm"
-      onClick={() => updateSymbols.mutate()}
+      onClick={() => {
+        updateSymbols.mutate();
+        localStorage.setItem('symbols_last_update', Date.now().toString());
+      }}
       disabled={updateSymbols.isPending}
       className="bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50 hover:text-white"
     >
       {updateSymbols.isPending ? (
         <>
           <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
-          Syncing...
+          Updating...
         </>
       ) : updateSymbols.isSuccess ? (
         <>
           <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
-          Synced
+          Updated
         </>
       ) : (
         <>
           <RefreshCcw className="w-4 h-4 mr-2" />
-          Sync CoinGecko
+          Update Symbols
         </>
       )}
     </Button>

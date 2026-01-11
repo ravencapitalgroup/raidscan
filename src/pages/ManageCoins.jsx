@@ -41,18 +41,6 @@ export default function ManageCoins() {
     },
   });
 
-  const toggleAll = useMutation({
-    mutationFn: async ({ assetIds, is_active }) => {
-      for (const id of assetIds) {
-        await base44.entities.WatchlistAsset.update(id, { is_active });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allWatchlistAssets'] });
-      queryClient.invalidateQueries({ queryKey: ['watchlistAssets'] });
-    },
-  });
-
   const categories = ['all', ...Object.keys(categoryColors)];
   
   const filteredAssets = assets.filter(asset => {
@@ -129,7 +117,7 @@ export default function ManageCoins() {
           </div>
 
           {/* Category Filters */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-2">
             {categories.map(cat => (
               <button
                 key={cat}
@@ -144,33 +132,6 @@ export default function ManageCoins() {
                 {cat === 'all' ? 'All Categories' : cat}
               </button>
             ))}
-            
-            <div className="flex gap-2 ml-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toggleAll.mutate({ 
-                  assetIds: filteredAssets.map(a => a.id), 
-                  is_active: true 
-                })}
-                disabled={toggleAll.isPending}
-                className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-              >
-                Select All
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toggleAll.mutate({ 
-                  assetIds: filteredAssets.map(a => a.id), 
-                  is_active: false 
-                })}
-                disabled={toggleAll.isPending}
-                className="bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50"
-              >
-                Deselect All
-              </Button>
-            </div>
           </div>
         </div>
 
