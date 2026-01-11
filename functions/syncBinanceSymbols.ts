@@ -135,9 +135,13 @@ Deno.serve(async (req) => {
 
     console.log(`Fetched ${symbols.length} trading symbols from Binance`);
 
-    // Get existing symbols
-    const existingAssets = await base44.asServiceRole.entities.WatchlistAsset.list();
-    const existingSymbols = new Set(existingAssets.map(a => a.symbol));
+    // Get existing symbols from both entities
+    const existingBinance = await base44.asServiceRole.entities.WatchlistAssetBinance.list();
+    const existingBinanceUS = await base44.asServiceRole.entities.WatchlistAssetBinanceUS.list();
+    const existingSymbols = new Set([
+      ...existingBinance.map(a => a.symbol),
+      ...existingBinanceUS.map(a => a.symbol)
+    ]);
 
     // Filter out existing symbols
     const newSymbols = symbols.filter(s => !existingSymbols.has(s.symbol));
@@ -146,15 +150,27 @@ Deno.serve(async (req) => {
 
     let poiRecordsAdded = 0;
 
-    // Bulk create new assets
+    // Bulk create new assets to appropriate watchlist entities
     if (newSymbols.length > 0) {
-      await base44.asServiceRole.entities.WatchlistAsset.bulkCreate(newSymbols);
+      // Separate by source
+      const binanceSymbols = newSymbols.filter(s => s.source.includes('binance') && !s.source.includes('binanceus'));
+      const binanceUSSymbols = newSymbols.filter(s => s.source.includes('binanceus'));
+      
+      if (binanceSymbols.length > 0) {
+        await base44.asServiceRole.entities.WatchlistAssetBinance.bulkCreate(binanceSymbols);
+      }
+      if (binanceUSSymbols.length > 0) {
+        await base44.asServiceRole.entities.WatchlistAssetBinanceUS.bulkCreate(binanceUSSymbols);
+      }
       await delay(2000); // Rate limit between operations
       
       // Fetch historic POI data for new symbols
       console.log(`Fetching historic data for ${newSymbols.length} new symbols`);
       for (let i = 0; i < newSymbols.length; i++) {
         const newAsset = newSymbols[i];
+        const isBinanceUS = newAsset.source.includes('binanceus');
+        const poiEntity = isBinanceUS ? 'PoiDataBinanceUS' : 'PoiDataBinance';
+        
         const weeklyKlines = await fetchKlines(base44, newAsset.symbol, '1w', 100);
         await delay(500); // Rate limit between API calls
         
@@ -204,7 +220,7 @@ Deno.serve(async (req) => {
         }
         
         if (poiData.length > 0) {
-          await base44.asServiceRole.entities.PoiData.bulkCreate(poiData);
+          await base44.asServiceRole.entities[poiEntity].bulkCreate(poiData);
           poiRecordsAdded += poiData.length;
           console.log(`Added ${poiData.length} POI records for ${newAsset.symbol}`);
           await delay(1000); // Rate limit between bulk creates
