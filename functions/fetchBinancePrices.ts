@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
     // Helper function to fetch from Binance with fallback to Binance US
     const fetchWithFallback = async (symbol) => {
       const endpoints = [
+        `https://fapi.binance.com/fapi/v3/ticker/24hr?symbol=${symbol}`,
         `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`,
         `https://api.binance.us/api/v3/ticker/24hr?symbol=${symbol}`
       ];
