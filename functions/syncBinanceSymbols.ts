@@ -41,26 +41,87 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Fetch from Spot via proxy
-    const spotData = await fetchViaProxy(base44, '/api/v3/exchangeInfo', {});
+    // Fetch from both Futures and Spot
+    const futuresData = await fetchViaProxy(base44, '/fapi/v1/exchangeInfo', {}).catch(() => ({ symbols: [] }));
+    const spotData = await fetchViaProxy(base44, '/api/v3/exchangeInfo', {}).catch(() => ({ symbols: [] }));
+    const spotUSData = await fetchViaProxy(base44, '/api/v3/exchangeInfo', {}).catch(() => ({ symbols: [] }));
     
-    // Process spot symbols
-    const symbols = [];
-    if (spotData.symbols) {
-      for (const s of spotData.symbols) {
-        if (s.status === 'TRADING' && s.quoteAsset === 'USDT') {
-          symbols.push({
-            symbol: s.symbol,
-            category: 'Other',
-            is_active: false,
-            new_added_date: new Date().toISOString(),
-            source: ['binance'],
-            is_spot: true,
-            is_futures: false
-          });
+    // Build symbol map tracking all sources
+    const symbolMap = new Map();
+    
+    // Process futures symbols (fapi.binance)
+    if (futuresData.symbols) {
+      for (const s of futuresData.symbols) {
+        if (s.status === 'TRADING' && s.symbol.endsWith('USDT')) {
+          if (!symbolMap.has(s.symbol)) {
+            symbolMap.set(s.symbol, {
+              symbol: s.symbol,
+              category: 'Other',
+              is_active: false,
+              new_added_date: new Date().toISOString(),
+              sources: new Set(),
+              is_futures: true,
+              is_spot: false
+            });
+          }
+          symbolMap.get(s.symbol).sources.add('binance');
+          symbolMap.get(s.symbol).is_futures = true;
         }
       }
     }
+    
+    // Process spot symbols (api.binance)
+    if (spotData.symbols) {
+      for (const s of spotData.symbols) {
+        if (s.status === 'TRADING' && s.quoteAsset === 'USDT') {
+          if (!symbolMap.has(s.symbol)) {
+            symbolMap.set(s.symbol, {
+              symbol: s.symbol,
+              category: 'Other',
+              is_active: false,
+              new_added_date: new Date().toISOString(),
+              sources: new Set(),
+              is_futures: false,
+              is_spot: true
+            });
+          }
+          symbolMap.get(s.symbol).sources.add('binance');
+          symbolMap.get(s.symbol).is_spot = true;
+        }
+      }
+    }
+    
+    // Process spot US symbols (api.binance.us)
+    if (spotUSData.symbols) {
+      for (const s of spotUSData.symbols) {
+        if (s.status === 'TRADING' && s.quoteAsset === 'USDT') {
+          if (!symbolMap.has(s.symbol)) {
+            symbolMap.set(s.symbol, {
+              symbol: s.symbol,
+              category: 'Other',
+              is_active: false,
+              new_added_date: new Date().toISOString(),
+              sources: new Set(),
+              is_futures: false,
+              is_spot: true
+            });
+          }
+          symbolMap.get(s.symbol).sources.add('binanceus');
+          symbolMap.get(s.symbol).is_spot = true;
+        }
+      }
+    }
+    
+    // Convert to final symbol array
+    const symbols = Array.from(symbolMap.values()).map(item => ({
+      symbol: item.symbol,
+      category: item.category,
+      is_active: item.is_active,
+      new_added_date: item.new_added_date,
+      source: Array.from(item.sources),
+      is_futures: item.is_futures,
+      is_spot: item.is_spot
+    }));
 
     console.log(`Fetched ${symbols.length} trading symbols from Binance`);
 
