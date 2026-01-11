@@ -152,22 +152,18 @@ export default function ManageCoins() {
                 </div>
               </div>
               <Button
-                onClick={() => selectAllAssets.mutate()}
-                disabled={selectAllAssets.isPending}
+                onClick={() => toggleAllAssets.mutate()}
+                disabled={toggleAllAssets.isPending}
                 variant="outline"
                 size="sm"
-                className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                className={cn(
+                  "transition-colors",
+                  activeCount < assets.length / 2
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                    : "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+                )}
               >
-                Select All
-              </Button>
-              <Button
-                onClick={() => deselectAllAssets.mutate()}
-                disabled={deselectAllAssets.isPending}
-                variant="outline"
-                size="sm"
-                className="bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
-              >
-                Deselect All
+                {activeCount < assets.length / 2 ? "Turn All On" : "Turn All Off"}
               </Button>
             </div>
           </div>
