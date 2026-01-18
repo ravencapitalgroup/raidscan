@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
       import { useScannerData } from '@/components/scanner/ScannerContext';
       import { Input } from "@/components/ui/input";
       import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-      import { Search, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+      import { Search, TrendingUp, TrendingDown, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
       import { cn } from "@/lib/utils";
       import { Badge } from "@/components/ui/badge";
+      import { Button } from "@/components/ui/button";
       import ScannerHeader from '@/components/scanner/ScannerHeader';
 
       const normalizeSymbol = (symbol) => {
@@ -16,11 +17,22 @@ import React, { useState } from 'react';
 
       export default function CoinData() {
         const [searchQuery, setSearchQuery] = useState('');
+        const [currentPage, setCurrentPage] = useState(1);
+        const itemsPerPage = 50;
         const { assetData, symbols, isScanning, refreshInterval, setRefreshInterval, nextRefresh, scanMarkets } = useScannerData();
 
-  const filteredSymbols = symbols.filter(symbol => 
-    symbol.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort();
+  const filteredSymbols = useMemo(() => 
+    symbols.filter(symbol => 
+      symbol.toLowerCase().includes(searchQuery.toLowerCase())
+    ).sort(),
+    [symbols, searchQuery]
+  );
+
+  const totalPages = Math.ceil(filteredSymbols.length / itemsPerPage);
+  const paginatedSymbols = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredSymbols.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredSymbols, currentPage, itemsPerPage]);
 
   const totalActiveRaids = Object.values(assetData).reduce(
     (sum, data) => sum + (data.activeRaids?.length || 0), 0
@@ -75,7 +87,7 @@ import React, { useState } from 'react';
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSymbols.map(symbol => {
+              {paginatedSymbols.map(symbol => {
                 const normalizedSymbol = normalizeSymbol(symbol);
                 const data = assetData[normalizedSymbol];
                 const isPositive = data?.change24h >= 0;
@@ -210,6 +222,42 @@ import React, { useState } from 'react';
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-sm text-slate-400">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSymbols.length)} of {filteredSymbols.length} coins
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </Button>
+              <div className="flex items-center gap-2 px-4">
+                <span className="text-sm text-slate-400">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {filteredSymbols.length === 0 && (
           <div className="text-center py-16">

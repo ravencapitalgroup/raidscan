@@ -9,9 +9,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const limit = 10;
-    const batchSize = 1;
-    const cooldownMs = 30000;
+    const limit = 500;
+    const batchSize = 5;
+    const cooldownMs = 15000;
 
     console.log(`Starting POI data update for Binance US`);
 
@@ -112,7 +112,9 @@ Deno.serve(async (req) => {
 
              if (Array.isArray(data) && data.length > 0) {
                const existingData = await base44.asServiceRole.entities.PoiDataBinanceUS.filter({ symbol, timeframe });
-               await Promise.all(existingData.map(record => base44.asServiceRole.entities.PoiDataBinanceUS.delete(record.id)));
+               if (existingData.length > 0) {
+                 await Promise.all(existingData.map(record => base44.asServiceRole.entities.PoiDataBinanceUS.delete(record.id)));
+               }
 
                const candles = data.map(kline => ({
                  symbol,
@@ -168,12 +170,12 @@ Deno.serve(async (req) => {
         }
         
         if (i < symbolsInBatch.length - 1) {
-          await delay(2000);
+          await delay(1000);
         }
       }
 
       if (batchIndex < binanceUSNumBatches - 1 && !binanceUSRateLimitHit) {
-        console.log(`Cooling down for 1 minute before next batch...`);
+        console.log(`Cooling down before next batch...`);
         await delay(cooldownMs);
       }
     }
